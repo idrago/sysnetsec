@@ -1,0 +1,171 @@
+version: "3"
+
+services:
+    access_control_0:
+        build: ./access_control_0
+        image: access_control_0
+        container_name: access_control_0
+        hostname: access_control_0
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:00
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.10
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2220:22"
+        volumes:
+            - /home/vagrant/access_control_0/flag:/root/flag
+
+    access_control_1:
+        build: ./access_control_1
+        image: access_control_1
+        container_name: access_control_1
+        hostname: access_control_1
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:01
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.11
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2221:22"
+        volumes:
+            - /home/vagrant/access_control_1/flag:/root/flag
+
+    access_control_2:
+        build: ./access_control_2
+        image: access_control_2
+        container_name: access_control_2
+        hostname: access_control_2
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:02
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.12
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2222:22"
+        volumes:
+            - /home/vagrant/access_control_2/flag:/root/flag
+
+    access_control_3:
+        build: ./access_control_3
+        image: access_control_3
+        container_name: access_control_3
+        hostname: access_control_3
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:03
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.13
+        command: bash -c "
+                    service ssh start &&
+                    cron && 
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2223:22"
+        volumes:
+            - /home/vagrant/access_control_3/flag:/root/flag            
+
+    access_control_4:
+        build: ./access_control_4
+        image: access_control_4
+        container_name: access_control_4
+        hostname: access_control_4
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:04
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.14
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2224:22"
+        volumes:
+            - /home/vagrant/access_control_4/flag:/root/flag            
+
+    access_control_5:
+        build: ./access_control_5
+        image: access_control_5
+        container_name: access_control_5
+        hostname: access_control_5
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:05
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.15
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2225:22"
+        volumes:
+            - /home/vagrant/access_control_5/flag:/root/flag            
+
+    access_control_6:
+        build: ./access_control_6
+        image: access_control_6
+        container_name: access_control_6
+        hostname: access_control_6
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:06
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.16
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2226:22"
+        volumes:
+            - /home/vagrant/access_control_6/flag:/root/flag            
+
+    access_control_7:
+        build: ./access_control_7
+        image: access_control_7
+        container_name: access_control_7
+        hostname: access_control_7
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:07
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.17
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2227:22"
+        volumes:
+            - /home/vagrant/access_control_7/flag:/root/flag            
+
+networks:
+    net-192.168.100.0:
+        name: net-192.168.100.0
+        internal: false
+        ipam:
+            config:
+                - subnet: 192.168.100.0/24
