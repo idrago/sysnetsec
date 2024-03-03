@@ -29,17 +29,17 @@ PostDown = iptables -D FORWARD -o %i -j ACCEPT
 """
 
 server_postup_template = """
-PostUp = iptables -I FORWARD -i %i -s 10.200.0.{ID}/32 -d 10.{ID}.0.0/13 -j ACCEPT
-PostUP = iptables -I FORWARD -s 10.{ID}.0.0/13 -d 10.{ID}.0.0/13 -j ACCEPT
-PostUP = iptables -I FORWARD -s 10.{ID}.0.0/13 -o %i -j ACCEPT
 PostUp = iptables -I FORWARD -s 10.{ID}.0.0/13 -j DROP
+PostUP = iptables -I FORWARD -s 10.{ID}.0.0/13 -o %i -j ACCEPT
+PostUP = iptables -I FORWARD -s 10.{ID}.0.0/13 -d 10.{ID}.0.0/13 -j ACCEPT
+PostUp = iptables -I FORWARD -i %i -s 10.200.0.{ID}/32 -d 10.{ID}.0.0/13 -j ACCEPT
 """
 
 server_postdown_template = """
-PostDown = iptables -D FORWARD -i %i -s 10.200.0.{ID}/32 -d 10.{ID}.0.0/13 -j ACCEPT
-PostDown = iptables -D FORWARD -s 10.{ID}.0.0/13 -d 10.{ID}.0.0/13 -j ACCEPT
-PostDown = iptables -D FORWARD -s 10.{ID}.0.0/13 -o %i -j ACCEPT
 PostDown = iptables -D FORWARD -s 10.{ID}.0.0/13 -j DROP
+PostDown = iptables -D FORWARD -s 10.{ID}.0.0/13 -o %i -j ACCEPT
+PostDown = iptables -D FORWARD -s 10.{ID}.0.0/13 -d 10.{ID}.0.0/13 -j ACCEPT
+PostDown = iptables -D FORWARD -i %i -s 10.200.0.{ID}/32 -d 10.{ID}.0.0/13 -j ACCEPT
 """
 
 template_server_peer = """
