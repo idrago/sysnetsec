@@ -1,18 +1,17 @@
-- Install WireGuard
+# SysNetSec - System and Network Security Exercises
 
-$ sudo apt-get install wireguard
+This repository houses a collection of exercises utilized in the System and Network Security course at UNITO.
 
-- Generate the configuration with the python script e put on /etc/wireguard (both on client and server)
+## Project Structure
 
-- Useful commands
+- **VPN**: This folder contains support scripts utilized for constructing the VPN necessary to execute the exercises.
 
-Show connections
-$ sudo wg show
+- **Other Subfolders**: Each subfolder represents an independent exercise. Refer to the README within each subfolder for a comprehensive description of the exercise.
 
-Start/stop interface
-$ wg-quick up wg0
-$ wg-quick down wg0
+## VPN Configuration
 
-Start/stop service
-$ sudo systemctl stop wg-quick@wg0.service
-$ sudo systemctl start wg-quick@wg0.service
+For exercises requiring a virtual private network (VPN), navigate to the `VPN` folder. Follow the README.md instructions within that folder to set up and configure the VPN using WireGuard.
+
+Feel free to explore each exercise in its respective subfolder for detailed instructions and context.
+
+Happy learning! 🚀
