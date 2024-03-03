@@ -84,7 +84,7 @@ for i in range(0, 256, 8):
     output.write(client_config)
     output.close()
 
-output = open("config/wg0.conf", "w")
+output = open(".vpnconfig/wg0.conf", "w")
 output.write(server_config)
 output.write(server_config_postup)
 output.write(server_config_postdown)
