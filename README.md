@@ -8,6 +8,12 @@ This repository houses a collection of exercises utilized in the System and Netw
 
 - **Other Subfolders**: Each subfolder represents an independent exercise. Refer to the README within each subfolder for a comprehensive description of the exercise.
 
+## Vagrant Installation
+Open a terminal in this folder and run 
+```
+$ sudo apt install vagrant-libvirt \
+```
+
 ## VPN Configuration
 
 For exercises requiring a virtual private network (VPN), navigate to the `VPN` folder. Follow the README.md instructions within that folder to set up and configure the VPN using WireGuard.
