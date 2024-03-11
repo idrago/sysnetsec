@@ -10,23 +10,12 @@ This repository houses a collection of exercises utilized in the System and Netw
 
 ## Vagrant Installation
 
-You can use Vagrant from Windows with WSL or with an installed Linux operating system. If using WSL, open a PowerShell terminal and type:
-```
-$ wsl --update
-```
-
 **Step 1** - Install Vagrant: open a terminal in this folder and run 
 ```
 $ sudo apt install vagrant-libvirt
 ```
 
-**Step 2** - If you are running Linux from Windows via WSL, type the following, otherwise move to Step 3:
-```
-$ export VAGRANT_WSL_ENABLE_WINDOWS_ACCESS="1"
-$ export PATH="${PATH}:/mnt/c/Program Files/Oracle/VirtualBox"
-```
-
-**Step 3** - Install libvirt and kvm:
+**Step 2** - Install libvirt and kvm:
 ```
 $ sudo apt install libvirt-clients libvirt-daemon-system virtinst bridge-utils
 $ sudo systemctl enable libvirtd
