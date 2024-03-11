@@ -22,6 +22,16 @@ $ sudo systemctl enable libvirtd
 $ sudo systemctl start libvirtd
 ```
 
+**Step3** - Move to `access_control` folder and start Vagrants:
+```
+$ cd access_control
+$ vagrant up
+```
+If you get the error `Management network can't be disabled when VM use box. Please fix your configuration and run vagrant again.`, comment line 47 in `Vagrantfile`:
+```
+#vm.mgmt_attach = false
+```
+
 ## VPN Configuration
 
 For exercises requiring a virtual private network (VPN), navigate to the `VPN` folder. Follow the README.md instructions within that folder to set up and configure the VPN using WireGuard.
