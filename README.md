@@ -22,7 +22,12 @@ $ sudo systemctl enable libvirtd
 $ sudo systemctl start libvirtd
 ```
 
-**Step3** - Move to `access_control` folder and start Vagrants:
+**Step 3** - Install ansible:
+```
+$ sudo apt install ansible
+```
+
+**Step4** - Move to `access_control` folder and start Vagrants:
 ```
 $ cd access_control
 $ vagrant up
@@ -30,6 +35,12 @@ $ vagrant up
 If you get the error `Management network can't be disabled when VM use box. Please fix your configuration and run vagrant again.`, comment line 47 in `Vagrantfile`:
 ```
 #vm.mgmt_attach = false
+```
+
+**Step 5**
+Trigger the provisioning
+```
+$ vagrant provision
 ```
 
 ## VPN Configuration
