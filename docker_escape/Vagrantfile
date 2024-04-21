@@ -1,0 +1,107 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+hosts_1 = {
+  "server01a" => "10.0.0.10",
+  # "server02a" => "10.8.0.10",
+  # "server03a" => "10.16.0.10",
+  # "server04a" => "10.24.0.10",
+  # "server05a" => "10.32.0.10",
+  # "server07a" => "10.48.0.10",
+  # "server08a" => "10.56.0.10",
+  # "server09a" => "10.64.0.10",
+  # "server11a" => "10.80.0.10",
+  # "server13a" => "10.96.0.10",
+  # "server16a" => "10.120.0.10",
+  # "server17a" => "10.128.0.10",
+  # "server18a" => "10.136.0.10",
+  # "server19a" => "10.144.0.10",
+  # "server20a" => "10.152.0.10",
+}
+
+hosts_2 = {
+  "server01b" => "10.0.0.11",
+  # "server02b" => "10.8.0.11",
+  # "server03b" => "10.16.0.11",
+  # "server04b" => "10.24.0.11",
+  # "server05b" => "10.32.0.11",
+  # "server07b" => "10.48.0.11",s
+  # "server08b" => "10.56.0.11",
+  # "server09b" => "10.64.0.11",
+  # "server11b" => "10.80.0.11",
+  # "server13b" => "10.96.0.11",
+  # "server16b" => "10.120.0.11",
+  # "server17b" => "10.128.0.11",
+  # "server18b" => "10.136.0.11",
+  # "server19b" => "10.144.0.11",
+  # "server20b" => "10.152.0.11",
+}
+
+hosts_3 = {
+  "server01c" => "10.0.0.12",
+  # "server02c" => "10.8.0.12",
+  # "server03c" => "10.16.0.12",
+  # "server04c" => "10.24.0.12",
+  # "server05c" => "10.32.0.12",
+  # "server07c" => "10.48.0.12",
+  # "server08c" => "10.56.0.12",
+  # "server09c" => "10.64.0.12",
+  # "server11c" => "10.80.0.12",
+  # "server13c" => "10.96.0.12",
+  # "server16c" => "10.120.0.12",
+  # "server17c" => "10.128.0.12",
+  # "server18c" => "10.136.0.12",
+  # "server19c" => "10.144.0.12",
+  # "server20c" => "10.152.0.12",
+}
+
+Vagrant.configure("2") do |config|
+  hosts_1.each do |name, ip|
+    config.vm.define name do |machine|
+      machine.vm.box = "generic/ubuntu2204"
+      machine.vm.hostname = "%s" % name
+      machine.vm.network "private_network", ip: ip
+      machine.vm.provider "libvirt" do |vm|
+        vm.memory = "1024"
+        vm.mgmt_attach = false
+      end
+      machine.vm.provision "ansible" do |ansible|
+        ansible.playbook = "type_0.yml"
+      end      
+    end
+  end
+end
+
+Vagrant.configure("2") do |config|
+  hosts_2.each do |name, ip|
+    config.vm.define name do |machine|
+      machine.vm.box = "generic/ubuntu2204"
+      machine.vm.hostname = "%s" % name
+      machine.vm.network "private_network", ip: ip
+      machine.vm.provider "libvirt" do |vm|
+        vm.memory = "1024"
+        vm.mgmt_attach = false
+      end
+      machine.vm.provision "ansible" do |ansible|
+        ansible.playbook = "type_1.yml"
+      end      
+    end
+  end
+end
+
+Vagrant.configure("2") do |config|
+  hosts_3.each do |name, ip|
+    config.vm.define name do |machine|
+      machine.vm.box = "generic/ubuntu2204"
+      machine.vm.hostname = "%s" % name
+      machine.vm.network "private_network", ip: ip
+      machine.vm.provider "libvirt" do |vm|
+        vm.memory = "1024"
+        vm.mgmt_attach = false
+      end
+      machine.vm.provision "ansible" do |ansible|
+        ansible.playbook = "type_2.yml"
+      end      
+    end
+  end
+end

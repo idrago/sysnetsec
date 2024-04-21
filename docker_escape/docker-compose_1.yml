@@ -1,0 +1,30 @@
+version: "3"
+
+services:
+    docker_escape:
+        build: ./docker_escape
+        image: docker_escape
+        container_name: docker_escape
+        hostname: docker_escape
+        tty: true
+        init: true
+        mac_address: 00:00:00:00:00:00
+        cap_add:
+            - SYS_MODULE
+        networks:
+            net-192.168.100.0:
+                ipv4_address: 192.168.100.10
+        command: bash -c "
+                    service ssh start &&
+                    tail -f /dev/null"
+        restart: unless-stopped
+        ports:
+            - "2221:22"
+      
+networks:
+    net-192.168.100.0:
+        name: net-192.168.100.0
+        internal: false
+        ipam:
+            config:
+                - subnet: 192.168.100.0/24
