@@ -4,9 +4,11 @@ This repository houses a collection of exercises utilized in the System and Netw
 
 ## Project Structure
 
-- **VPN**: This folder contains support scripts utilized for constructing the VPN necessary to execute the exercises.
+- **vpn**: This folder contains support scripts utilized for constructing the VPN necessary to execute the exercises.
 
-- **Other Subfolders**: Each subfolder represents an independent exercise. Refer to the README within each subfolder for a comprehensive description of the exercise.
+- **vm**: This folder contains the scripts to creare an individual VM to each student. Traffic from VPN clients end in the VMs.
+
+- **Other subfolders**: Each subfolder represents an independent set of exercises. Refer to the README.md within each subfolder for a comprehensive description of the exercise.
 
 ## Vagrant Installation
 
@@ -27,26 +29,10 @@ $ sudo systemctl start libvirtd
 $ sudo apt install ansible
 ```
 
-**Step4** - Move to `access_control` folder and start Vagrants:
+**Step4** - Move to `vms` folder and start the Vagrant boxes:
 ```
-$ cd access_control
+$ cd vms
 $ vagrant up
 ```
-If you get the error `Management network can't be disabled when VM use box. Please fix your configuration and run vagrant again.`, comment line 47 in `Vagrantfile`:
-```
-#vm.mgmt_attach = false
-```
-
-**Step 5**
-Trigger the provisioning
-```
-$ vagrant provision
-```
-
-## VPN Configuration
-
-For exercises requiring a virtual private network (VPN), navigate to the `VPN` folder. Follow the README.md instructions within that folder to set up and configure the VPN using WireGuard.
-
-Feel free to explore each exercise in its respective subfolder for detailed instructions and context.
 
 Happy learning! 🚀

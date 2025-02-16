@@ -1,0 +1,102 @@
+network:
+  name: ctf_network
+  subnet: 10.128.0.0/9
+
+exercises:
+  base_path: /home/vagrant
+  default_address:
+    ip: 10.128.0.0/9   
+  capabilities:
+    drop: ['ALL']
+    add: ['CHOWN', 'SETGID', 'SETUID']
+  healthcheck:
+    interval: 30s
+    timeout: 10s
+    retries: 3
+  ssh:
+    base_port: 22 
+  
+  configs:
+    0: 
+      name: sudo
+      description: "Privilege escalation via sudo misconfiguration"
+      address:
+        ip: 10.128.0.10/32
+    
+    1:
+      name: ssh_keys
+      description: "SSH key misconfiguration exercise"
+      address:
+        ip: 10.128.0.11/32
+    
+    2:
+      name: cron_jobs
+      description: "Exploiting writable cron jobs"
+      address:
+        ip: 10.128.0.12/32
+    
+    3:
+      name: suid_binary
+      description: "SUID binary permissions exploitation"
+      address:
+        ip: 10.128.0.13/32
+    
+    4:
+      name: custom_binary
+      description: "Custom binary vulnerability exploitation"
+      capabilities:
+        add: ['SYS_PTRACE']
+      address:
+        ip: 10.128.0.14/32
+    
+    5:
+      name: make_command
+      description: "SUID make command exploitation"
+      capabilities:
+        add: ['SYS_PTRACE']
+      address:
+        ip: 10.128.0.15/32
+    
+    6:
+      name: gdb_privesc
+      description: "GDB privilege escalation"
+      capabilities:
+        add: ['SYS_PTRACE']
+      address:
+        ip: 10.128.0.16/32
+    
+    7:
+      name: python_path
+      description: "Python library path exploitation"
+      address:
+        ip: 10.128.0.17/32
+  
+    8:
+      name: nginx_config
+      description: "Nginx configuration exploitation"
+      capabilities:
+        add: ['NET_BIND_SERVICE']
+      address:
+        ip: 10.128.0.18/32
+    
+    9:
+      name: postgresql
+      description: "PostgreSQL permissions exploitation"
+      capabilities:
+        add: ['NET_BIND_SERVICE']
+      address:
+        ip: 10.128.0.19/32
+
+vms:
+  pattern:
+    base_ip: 192.198.254.0/24
+    student_prefix: "student"
+    vagrant_path: "../vms/.vagrant/machines"
+    vm_provider: "libvirt"
+  
+  groups:
+    lab01:
+      range: [2, 2]
+      ssh_user: vagrant
+      ssh_key_template: "{vagrant_path}/{student_prefix}{id}/{vm_provider}/private_key"
+      exercises: [0]
