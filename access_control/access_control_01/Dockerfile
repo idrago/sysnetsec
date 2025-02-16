@@ -8,10 +8,7 @@ USER root
 RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         openssh-server \
-        iptables \
         vim-tiny \
-        net-tools \
-        cron \
         acl \
         sudo && \
     rm -rf /var/lib/apt/lists/* && \

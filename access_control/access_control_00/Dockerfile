@@ -8,11 +8,8 @@ USER root
 RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         openssh-server \
-        iptables \
-        vim-tiny \
         net-tools \
-        cron \
-        acl \
+        vim-tiny \
         sudo && \
     rm -rf /var/lib/apt/lists/* && \
     # Create user with weak password

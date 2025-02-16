@@ -145,7 +145,7 @@ class CTFDeployment:
                 'hostname': ex.name,
                 'networks': network_config,
                 'volumes': [
-                    f"{self.config['exercises']['base_path']}/{ex.name}/flag:/root/flag:ro",
+                    f"{self.config['exercises']['base_path']}/{ex.name}/flag/flag.txt:/root/flag.txt:ro",
                     f"{self.config['exercises']['base_path']}/{ex.name}/hints:/home/student/hints:ro"
                 ],
                 'healthcheck': self.config['exercises']['healthcheck'],

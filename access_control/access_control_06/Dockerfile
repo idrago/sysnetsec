@@ -3,33 +3,42 @@ FROM debian:bookworm-slim
 ARG DEBIAN_FRONTEND=noninteractive
 USER root
 
+# Set global PYTHONPATH environment variable
+ENV PYTHONPATH=/usr/lib/python
+
 # Vuln 1: Weak password vulnerability
-# Vuln 2: SUID bit set on make command, allowing privilege escalation
+# Vuln 2: User-writable Python path in PYTHONPATH for root cron job
 RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         openssh-server \
-        iptables \
         vim-tiny \
         net-tools \
         cron \
-        build-essential \
         acl \
-        zsh \
-        sudo && \
+        sudo \
+        python3 && \
     rm -rf /var/lib/apt/lists/* && \
     # Create user with weak password (Vuln 1)
     useradd -ms /bin/bash student && \
     echo "student:password" | chpasswd && \
-    # Critical vulnerability: Set SUID bit on make binary (Vuln 2)
-    chmod u+s $(which make) && \
+    # Critical vulnerability: Create user-writable Python path (Vuln 2)
+    mkdir -p /usr/lib/python && \
+    chown -R student:student /usr/lib/python && \
     # Create required SSH directory
-    mkdir -p /run/sshd
+    mkdir -p /run/sshd && \
+    # Make PYTHONPATH visible to user
+    echo "export PYTHONPATH=/usr/lib/python" >> /etc/environment
 
 COPY sshd_config /etc/ssh/sshd_config
+COPY backup.py /root/backup.py
+
+# Setup vulnerable cron job with custom PYTHONPATH
+RUN echo "* * * * * root /usr/bin/python3 /root/backup.py" >> /etc/cron.d/backup && \
+    chmod 644 /etc/cron.d/backup
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd || exit 1
 
-# Set the default command
-CMD ["/usr/sbin/sshd", "-D"]
+# Start both cron and SSH
+CMD bash -c "cron && /usr/sbin/sshd -D"

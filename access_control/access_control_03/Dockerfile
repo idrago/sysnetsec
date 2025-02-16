@@ -8,9 +8,7 @@ USER root
 RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         openssh-server \
-        iptables \
         vim-tiny \
-        net-tools \
         cron \
         acl \
         sudo && \
@@ -24,14 +22,14 @@ RUN apt-get update && \
 COPY sshd_config /etc/ssh/sshd_config
 
 # Setup vulnerable cron job (Vuln 2)
-COPY secret.sh /etc/secret.sh
-RUN chown root:root /etc/secret.sh && \
+COPY cache.sh /etc/cache.sh
+RUN chown root:root /etc/cache.sh && \
     # Critical vulnerability: world-writable script executed by root cron
-    chmod 777 /etc/secret.sh && \
+    chmod 777 /etc/cache.sh && \
     # Add script to root's crontab
-    echo "* * * * * root /etc/secret.sh" >> /etc/cron.d/secret && \
+    echo "* * * * * root /etc/cache.sh" >> /etc/cron.d/cache && \
     # Set proper permissions for cron job file
-    chmod 644 /etc/cron.d/secret
+    chmod 644 /etc/cron.d/cache
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
