@@ -146,8 +146,8 @@
               iptables -F FORWARD
               
               # Allow container network traffic
-              iptables -A FORWARD -i eth0 -o docker0 -j ACCEPT
-              iptables -A FORWARD -i docker0 -o eth0 -j ACCEPT
+              iptables -A FORWARD -i eth0 -d {{ docker_network }} -j ACCEPT
+              iptables -A FORWARD -s {{ docker_network }} -o eth0 -j ACCEPT
             
         - name: Create systemd service for iptables rules
           copy:
