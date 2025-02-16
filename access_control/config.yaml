@@ -8,7 +8,7 @@ exercises:
     ip: 10.128.0.0/9   
   capabilities:
     drop: ['ALL']
-    add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE']
+    add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'CAP_CHOWN', 'CAP_DAC_OVERRIDE']
   healthcheck:
     interval: 30s
     timeout: 10s
