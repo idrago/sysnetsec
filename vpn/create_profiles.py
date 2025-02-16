@@ -81,19 +81,25 @@ class WireGuardConfigurator:
         return f"""
         # ******************************************************
         #  Student {student.student_id} iptables configuration
-        # NAT: Route VPN client traffic to the VM
-        PostUp = iptables -t nat -A chain-pg-nat -s {student.wg_ip}/32 -j DNAT --to-destination {student.vm_ip}
         
-        # Allow bidirectional traffic between VPN client and their VM
-        PostUp = iptables -A chain-pg -s {student.wg_ip}/32 -d {student.vm_ip}/32 -j ACCEPT
-        PostUp = iptables -A chain-pg -s {student.vm_ip}/32 -d {student.wg_ip}/32 -j ACCEPT
+        PostUp = ip rule add from {student.wg_ip}/32 table {100 + student.student_id}
+        PostUp = ip route add default via {student.vm_ip} table {100 + student.student_id}
         
+        PostUp = iptables -A chain-pg -s {student.wg_ip}/32 -d {ALLOWED_NETWORKS} -j ACCEPT
+        PostUp = iptables -A chain-pg -s {ALLOWED_NETWORKS} -d {student.wg_ip}/32 -j ACCEPT
+                
         # Allow VM to access internet through {INTERNET_INTERFACE}, but block internal networks
         PostUp = iptables -A chain-pg -s {student.vm_ip}/32 -o {INTERNET_INTERFACE} ! -d {BLOCKED_NETWORKS} -j ACCEPT
         
         # Drop any other traffic from this VM (to other VMs or internal networks)
         PostUp = iptables -A chain-pg -s {student.vm_ip}/32 -j DROP
+        PostUp = iptables -A chain-pg -s {student.wg_ip}/32 -j DROP
+
+        # Cleanup rules
+        PostDown = ip rule del from {student.wg_ip}/32 table {100 + student.student_id}
+        PostDown = ip route del default via {student.vm_ip} table {100 + student.student_id}
         """
+
 
     def generate_server_config(self) -> str:
         interface_config = f"""
