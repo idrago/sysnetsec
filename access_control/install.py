@@ -113,18 +113,14 @@ class CTFDeployment:
         """Generate docker-compose.yml for a specific VM."""
         network_name = self.config['network']['name']
         compose = {
-            'version': '3',
-            'services': {},
+            # Remove 'version' as it's obsolete
             'networks': {
                 network_name: {
                     'name': network_name,
-                    'ipam': {
-                        'config': [
-                            {'subnet': self.config['network']['subnet']}
-                        ]
-                    }
+                    'external': True  # Mark the network as external since we create it separately
                 }
-            }
+            },
+            'services': {}
         }
 
         used_ips = set()
@@ -159,7 +155,7 @@ class CTFDeployment:
             compose['services'][ex.name] = service_config
             
         return compose
-
+    
     def deploy_to_vm(self, vm_config):
         """Deploy exercises to a specific VM."""
         print(f"Deploying to {vm_config['ip']}...")
@@ -174,6 +170,9 @@ class CTFDeployment:
                 key_filename=os.path.expanduser(vm_config['ssh_key'])
             )
             
+            sftp = ssh.open_sftp()
+
+            # First deploy all exercise files and docker-compose
             compose_config = self.generate_docker_compose(vm_config)
             with open('/tmp/docker-compose.yml', 'w') as f:
                 yaml.dump(compose_config, f, 
@@ -192,7 +191,6 @@ class CTFDeployment:
                 
                 # Generate and copy flag
                 flag = ex.generate_flag()
-                sftp = ssh.open_sftp()
                 flag_path = f"{self.config['exercises']['base_path']}/{ex.name}/flag/flag.txt"
                 flag_file = sftp.file(flag_path, 'w')
                 flag_file.write(flag)
@@ -220,14 +218,29 @@ class CTFDeployment:
             # Copy docker-compose.yml
             sftp.put('/tmp/docker-compose.yml', f"{self.config['exercises']['base_path']}/docker-compose.yml")
             
-            # Start containers
+            # Now set up the systemd service for future reboots
+            sftp.put('ctf-service.py', '/tmp/ctf-service.py')
+            sftp.put('ctf.service', '/tmp/ctf.service')
+            
+            ssh.exec_command('sudo mv /tmp/ctf-service.py /usr/local/bin/ctf-service.py')
+            ssh.exec_command('sudo chmod +x /usr/local/bin/ctf-service.py')
+            ssh.exec_command('sudo mv /tmp/ctf.service /etc/systemd/system/ctf.service')
+            
+            # Initial start of containers
             ssh.exec_command(f"cd {self.config['exercises']['base_path']} && docker compose up -d")
+            
+            # Enable service for future reboots
+            ssh.exec_command('sudo systemctl daemon-reload')
+            ssh.exec_command('sudo systemctl enable ctf.service')
+            ssh.exec_command('sudo systemctl start ctf.service')
             
         except Exception as e:
             print(f"Error deploying to {vm_config['ip']}: {str(e)}")
         finally:
+            if 'sftp' in locals():
+                sftp.close()
             ssh.close()
-
+    
 def main():
     deployment = CTFDeployment()
     
