@@ -23,7 +23,7 @@ RUN mkdir -p /var/lib/postgresql/15/main && \
     chown postgres:postgres /var/run/postgresql
 
 COPY entrypoint.sh /
-RUN chmod +x /entrypoint.sh
+RUN chmod 700 /entrypoint.sh
 
 # VULN give permission to the postgres user to access /root folder
 RUN setfacl -m u:postgres:x /root
