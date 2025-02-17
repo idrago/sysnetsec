@@ -27,10 +27,12 @@ class Node
 
   # Generate nodes for given number of students
   def self.generate_nodes(num_students)
-    (2..(num_students + 1)).map do |id|
-      mac = format("00:00:00:00:00:%02x", id)
-      ip = "192.198.254.#{id}"
-      new("student#{format('%02d', id)}", "debian/bookworm64", mac, ip)
+    (1..num_students).map do |id|
+      student_num = id + 1  # Start student numbers at 02
+      ip_num = id + 1      # Start IPs at .2
+      mac = format("00:00:00:00:00:%02x", ip_num)
+      ip = "192.198.254.#{ip_num}"
+      new("student#{format('%02d', student_num)}", "debian/bookworm64", mac, ip)
     end
   end
 end
@@ -106,7 +108,7 @@ Vagrant.configure("2") do |config|
       # end
 
       unless network_exists
-        # Define and start the network
+        # Creating and start the network
         puts "Creating new network..."
         system("sudo virsh net-define #{temp_file.path}")
         system("sudo virsh net-start #{NETWORK_CONFIG[:name]}")
