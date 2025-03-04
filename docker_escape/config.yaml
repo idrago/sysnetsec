@@ -83,7 +83,6 @@ vms:
   pattern:
     base_ip: 192.198.254.0/24
     student_prefix: "student"
-    vm_suffix: "vm1"
     vagrant_path: "../vms/.vagrant/machines"
     vm_provider: "libvirt"
   
@@ -91,5 +90,5 @@ vms:
     lab01:
       range: [2, 2]  # Expanded range to match README
       ssh_user: vagrant
-      ssh_key_template: "{vagrant_path}/{student_prefix}{id}-{vm_suffix}}/{vm_provider}/private_key"
+      ssh_key_template: "{vagrant_path}/{student_prefix}{id}/{vm_provider}/private_key"
       exercises: [0, 1, 2, 3, 4, 5, 6, 7, 8]  # Include all exercises

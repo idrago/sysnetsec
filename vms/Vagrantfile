@@ -1,81 +1,185 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Get number of students from environment variable or use default
-NUM_STUDENTS = (ENV['NUM_STUDENTS'] || '1').to_i
+# =======================
+# CONFIGURABLE PARAMETERS
+# =======================
 
-# Validate number of students
-if NUM_STUDENTS < 1 || NUM_STUDENTS > 253  # Keep 254 as max to avoid conflicts
-  puts "Error: Number of students must be between 1 and 253"
+# VM Configuration
+VM_CONFIG = {
+  cpus: (ENV['VM_CPUS'] || '2').to_i,
+  memory: (ENV['VM_MEMORY'] || '1024').to_i,
+  disk_size: (ENV['VM_DISK_SIZE'] || '10').to_i,
+  box: ENV['VM_BOX'] || "debian/bookworm64"
+}
+
+# Network Configuration
+NET_CONFIG = {
+  base_subnet: ENV['NET_BASE_SUBNET'] || "192.198",      # Base network segment
+  bridge_prefix: (ENV['NET_BRIDGE_PREFIX'] || '10').to_i, # virbr prefix (virbr10+)
+  start_subnet: (ENV['NET_START_SUBNET'] || '254').to_i,  # First subnet (counts down)
+  subnet_mask: ENV['NET_SUBNET_MASK'] || "255.255.255.0"
+}
+
+# Student Configuration
+STUDENT_CONFIG = {
+  count: (ENV['NUM_STUDENTS'] || '1').to_i,
+  start_index: (ENV['STUDENT_START_INDEX'] || '2').to_i,  # First student number
+  vms_per_student: (ENV['VMS_PER_STUDENT'] || '1').to_i,
+  naming_format: ENV['STUDENT_FORMAT'] || "student%02d-vm%d" # Format string for VM names
+}
+
+# Ansible Configuration
+ANSIBLE_CONFIG = {
+  enabled: (ENV['USE_ANSIBLE'] || 'true') == 'true',
+  playbook: ENV['ANSIBLE_PLAYBOOK'] || "basicvm.yml",
+  compat_mode: ENV['ANSIBLE_COMPAT_MODE'] || "2.0"
+}
+
+# =================
+# VALIDATION CHECKS
+# =================
+
+MAX_STUDENTS = 50
+MAX_VMS_PER_STUDENT = 5
+
+if STUDENT_CONFIG[:count] < 1 || STUDENT_CONFIG[:count] > MAX_STUDENTS
+  puts "Error: Number of students must be between 1 and #{MAX_STUDENTS}"
   exit 1
 end
 
+if STUDENT_CONFIG[:vms_per_student] < 1 || STUDENT_CONFIG[:vms_per_student] > MAX_VMS_PER_STUDENT
+  puts "Error: VMs per student must be between 1 and #{MAX_VMS_PER_STUDENT}"
+  exit 1
+end
+
+# =====================
+# INFRASTRUCTURE MODELS
+# =====================
+
 # Define a Node class to encapsulate node properties
 class Node
-  attr_reader :role, :box, :mac, :ip
+  attr_reader :role, :box, :mac, :ip, :network_name, :student_num, :vm_num
   
-  def initialize(role, box, mac, ip)
+  def initialize(role, box, mac, ip, network_name, student_num, vm_num)
     @role = role
     @box = box
     @mac = mac
     @ip = ip
+    @network_name = network_name
+    @student_num = student_num
+    @vm_num = vm_num
   end
 
   def to_dhcp_entry
     %(<host mac='#{@mac}' name='#{@role}' ip='#{@ip}'/>)
   end
+end
 
-  # Generate nodes for given number of students
-  def self.generate_nodes(num_students)
-    (2..(num_students + 1)).map do |num|  # Start at 2 to align with student02
-      mac = format("00:00:00:00:00:%02x", num)
-      ip = "192.198.254.#{num}"
-      new("student#{format('%02d', num)}", "debian/bookworm64", mac, ip)
-    end
+# Network configuration generator
+class NetworkConfig
+  attr_reader :name, :bridge, :mac, :ip, :netmask, :dhcp_range
+  
+  def initialize(subnet_index, config)
+    @subnet_index = subnet_index
+    @name = "studentnet#{subnet_index}"
+    @bridge = "virbr#{config[:bridge_prefix] + subnet_index}"
+    @mac = generate_mac(subnet_index)
+    
+    # Calculate subnet from the base parameters
+    subnet_num = config[:start_subnet] - subnet_index
+    @ip = "#{config[:base_subnet]}.#{subnet_num}.1"
+    @netmask = config[:subnet_mask]
+    
+    @dhcp_range = {
+      start: "#{config[:base_subnet]}.#{subnet_num}.2",
+      end: "#{config[:base_subnet]}.#{subnet_num}.253"
+    }
+  end
+  
+  private
+  
+  def generate_mac(subnet_index)
+    # Ensures unique MAC for each network
+    format("AA:AA:AA:AA:%02X:AA", subnet_index)
   end
 end
 
-# Network configuration - TODO: this should come from inventory files
-NETWORK_CONFIG = {
-  name: 'studentnet',
-  bridge: 'virbr10',
-  mac: 'AA:AA:AA:AA:AA:AA',
-  ip: '192.198.254.1',
-  netmask: '255.255.255.0',
-  dhcp_range: {
-    start: '192.198.254.2',
-    end: '192.198.254.253'
-  }
-}
+# ===================
+# GENERATOR FUNCTIONS
+# ===================
 
-# Generate nodes based on NUM_STUDENTS
-NODES = Node.generate_nodes(NUM_STUDENTS)
-
-# Common VM configuration
-NODE_CPUS = 2
-NODE_MEMORY = 2048
+# Node generator
+def generate_nodes(student_config, vm_config, net_config)
+  nodes = []
+  
+  (1..student_config[:count]).each do |student_idx|
+    student_num = student_idx + student_config[:start_index] - 1
+    
+    (1..student_config[:vms_per_student]).each do |vm_num|
+      network_index = vm_num - 1
+      subnet_base = net_config[:start_subnet] - network_index
+      
+      # Generate unique information for this VM
+      role = format(student_config[:naming_format], student_num, vm_num)
+      box = vm_config[:box]
+      
+      # MAC addresses should be unique across all VMs
+      # Use student number and VM number to create unique identifier
+      mac_id = (student_idx * 10) + vm_num
+      mac = format("00:00:00:00:%02X:%02X", network_index, mac_id)
+      
+      # IP address in the appropriate subnet
+      ip = "#{net_config[:base_subnet]}.#{subnet_base}.#{student_idx + 1}"
+      
+      # Network name for this VM
+      network_name = "studentnet#{network_index}"
+      
+      nodes << Node.new(role, box, mac, ip, network_name, student_num, vm_num)
+    end
+  end
+  
+  nodes
+end
 
 # Generate network XML from configuration
 def generate_network_xml(network_config, nodes)
+  # Filter nodes for this specific network
+  network_nodes = nodes.select { |node| node.network_name == network_config.name }
+  
   <<-EOF
 <network>
-  <name>#{network_config[:name]}</name>
+  <name>#{network_config.name}</name>
   <forward mode='nat'>
     <nat>
       <port start='1024' end='65535'/>
     </nat>
   </forward>
-  <bridge name='#{network_config[:bridge]}' stp='on' delay='0'/>
-  <mac address='#{network_config[:mac]}'/>
-  <ip address='#{network_config[:ip]}' netmask='#{network_config[:netmask]}'>
+  <bridge name='#{network_config.bridge}' stp='on' delay='0'/>
+  <mac address='#{network_config.mac}'/>
+  <ip address='#{network_config.ip}' netmask='#{network_config.netmask}'>
     <dhcp>
-      <range start='#{network_config[:dhcp_range][:start]}' end='#{network_config[:dhcp_range][:end]}'/>
-      #{nodes.map(&:to_dhcp_entry).join("\n      ")}
+      <range start='#{network_config.dhcp_range[:start]}' end='#{network_config.dhcp_range[:end]}'/>
+      #{network_nodes.map(&:to_dhcp_entry).join("\n      ")}
     </dhcp>
   </ip>
 </network>
   EOF
 end
+
+# ======================
+# GENERATE INFRASTRUCTURE
+# ======================
+
+# Generate networks based on VMs per student
+NETWORKS = (0...STUDENT_CONFIG[:vms_per_student]).map { |i| NetworkConfig.new(i, NET_CONFIG) }
+
+# Generate all nodes
+NODES = generate_nodes(STUDENT_CONFIG, VM_CONFIG, NET_CONFIG)
+
+# ==============
+# VAGRANT CONFIG
+# ==============
 
 Vagrant.configure("2") do |config|
   # Global VM settings
@@ -85,60 +189,102 @@ Vagrant.configure("2") do |config|
   # disable default synced folder
   config.vm.synced_folder ".", "/vagrant", disabled: true
   
-  # Create the network before any VM operations
+  # Create all networks before any VM operations
   config.trigger.before :up do |trigger|
-    trigger.name = "Create libvirt network"
+    trigger.name = "Create libvirt networks"
     trigger.ruby do
-      # Generate and write network XML to temporary file
       require 'tempfile'
-      temp_file = Tempfile.new(['network', '.xml'])
-      temp_file.write(generate_network_xml(NETWORK_CONFIG, NODES))
-      temp_file.close
-
-      # Check if network exists
-      network_exists = system("sudo virsh net-list --all | grep -q #{NETWORK_CONFIG[:name]}")
       
-      unless network_exists
-        # Creating and start the network
-        puts "Creating new network..."
-        system("sudo virsh net-define #{temp_file.path}")
-        system("sudo virsh net-start #{NETWORK_CONFIG[:name]}")
-        system("sudo virsh net-autostart #{NETWORK_CONFIG[:name]}")
-      end
+      NETWORKS.each do |network_config|
+        # Generate and write network XML to temporary file
+        temp_file = Tempfile.new(['network', '.xml'])
+        temp_file.write(generate_network_xml(network_config, NODES))
+        temp_file.close
 
-      # Clean up temporary file
-      temp_file.unlink
+        # Check if network exists
+        network_exists = system("sudo virsh net-list --all | grep -q #{network_config.name}")
+        
+        unless network_exists
+          # Creating and start the network
+          puts "Creating new network #{network_config.name}..."
+          system("sudo virsh net-define #{temp_file.path}")
+          system("sudo virsh net-start #{network_config.name}")
+          system("sudo virsh net-autostart #{network_config.name}")
+        end
+
+        # Clean up temporary file
+        temp_file.unlink
+      end
     end
   end
 
   # Print configuration summary
   config.trigger.before :up do |trigger|
-    trigger.info = "Configuring environment for #{NUM_STUDENTS} students"
+    trigger.info = <<-EOF
+    CTF Environment Configuration:
+    -----------------------------
+    Students: #{STUDENT_CONFIG[:count]} (starting at #{STUDENT_CONFIG[:start_index]})
+    VMs per student: #{STUDENT_CONFIG[:vms_per_student]}
+    Total VMs: #{STUDENT_CONFIG[:count] * STUDENT_CONFIG[:vms_per_student]}
+    VM specs: #{VM_CONFIG[:cpus]} CPUs, #{VM_CONFIG[:memory]}MB RAM, #{VM_CONFIG[:disk_size]}GB disk
+    Base image: #{VM_CONFIG[:box]}
+    Network: #{NET_CONFIG[:base_subnet]}.x.y subnets
+    EOF
   end
 
   # Libvirt provider configuration
   config.vm.provider "libvirt" do |v|
-    v.cpus = NODE_CPUS
-    v.memory = NODE_MEMORY
+    v.cpus = VM_CONFIG[:cpus]
+    v.memory = VM_CONFIG[:memory]
     v.mgmt_attach = false
-    v.machine_virtual_size = 10
+    v.machine_virtual_size = VM_CONFIG[:disk_size]
   end
 
+  # Define each VM
   NODES.each do |node|
     config.vm.define node.role do |n|
       n.vm.box = node.box
       n.vm.hostname = node.role
       n.vm.network "private_network",
         mac: node.mac,
-        libvirt__network_name: NETWORK_CONFIG[:name],
+        libvirt__network_name: node.network_name,
         libvirt__forward_mode: "nat",
         libvirt__dhcp_enabled: true,
         auto_config: false
 
-      # Run Ansible playbook
-      n.vm.provision "ansible" do |ansible|
-        ansible.playbook = "basicvm.yml"
-        ansible.compatibility_mode = "2.0"
+      # Run Ansible playbook if enabled
+      if ANSIBLE_CONFIG[:enabled]
+        n.vm.provision "ansible" do |ansible|
+          ansible.playbook = ANSIBLE_CONFIG[:playbook]
+          ansible.compatibility_mode = ANSIBLE_CONFIG[:compat_mode]
+          ansible.extra_vars = {
+            student_id: "student#{format('%02d', node.student_num)}",
+            vm_id: "vm#{node.vm_num}",
+            student_index: node.student_num,
+            vm_index: node.vm_num,
+            ip_address: node.ip,
+            network_name: node.network_name
+          }
+        end
+      end
+    end
+  end
+  
+  # Cleanup networks when destroying environment
+  config.trigger.after :destroy do |trigger|
+    trigger.name = "Cleanup libvirt networks"
+    trigger.ruby do
+      # Only clean up if all VMs are being destroyed
+      if ARGV.include?('--force') || !ARGV.include?('--')
+        NETWORKS.each do |network_config|
+          network_exists = system("sudo virsh net-list --all | grep -q #{network_config.name}")
+          
+          if network_exists
+            puts "Destroying network #{network_config.name}..."
+            system("sudo virsh net-destroy #{network_config.name}")
+            system("sudo virsh net-undefine #{network_config.name}")
+          end
+        end
       end
     end
   end

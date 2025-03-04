@@ -88,7 +88,6 @@ class VMGroup:
             ssh_key = self.config['ssh_key_template'].format(
                 vagrant_path=self.pattern['vagrant_path'],
                 student_prefix=self.pattern['student_prefix'],
-                vm_suffix=self.pattern['vm_suffix'],
                 id=str(i).zfill(2),
                 vm_provider=self.pattern['vm_provider']
             )
