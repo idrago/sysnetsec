@@ -1,6 +1,32 @@
+category_name: docker_escapes
+
 network:
   name: ctf_network
   subnet: 10.128.0.0/9
+
+# Default service configuration for all exercises
+service_defaults:
+  init: true
+  tty: true
+  restart: unless-stopped
+  healthcheck:
+    interval: 30s
+    timeout: 10s
+    retries: 3
+
+# VM-level flags configuration
+vm_flags:
+  host_root_flag:
+    vm_types: ["vm1"]  # VM types where this flag should be deployed
+    path: "/root/host_flag.txt"  # Path on the VM where flag should be placed
+    permissions: "400"  # File permissions
+    owner: "root:root"  # File owner
+    
+  privileged_flag:
+    vm_types: ["vm2"]
+    path: "/opt/secret_flag/flag.txt"
+    permissions: "400"
+    owner: "root:root"
 
 exercises:
   base_path: /home/vagrant
@@ -8,87 +34,56 @@ exercises:
     ip: 10.128.0.0/9   
   capabilities:
     drop: ['ALL']
-    add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'CAP_CHOWN', 'CAP_DAC_OVERRIDE']
-  healthcheck:
-    interval: 30s
-    timeout: 10s
-    retries: 3
+    add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE']
   ssh:
     base_port: 22 
   
   configs:
-    0: 
-      name: sudo_rights
-      description: "Privilege escalation via sudo misconfiguration"
+    0:
+      name: dangerous_mount
+      description: "Escape Docker container through dangerous volume mounts"
       address:
         ip: 10.128.0.10/32
+      volumes:
+        - "/var/run/docker.sock:/var/run/docker.sock:rw"  # Dangerous mount of Docker socket
+      environment:
+        - "EXERCISE_TYPE=docker_socket_mount"
+        - "DIFFICULTY=medium"
+      flag_in_container: false  # Flag is not in container but on the VM host
     
     1:
-      name: shadow_access
-      description: "Shadow file permission exploitation"
-      address:
-        ip: 10.128.0.11/32
-    
-    2:
-      name: ssh_keys
-      description: "SSH key misconfiguration exercise"
-      address:
-        ip: 10.128.0.12/32
-    
-    3:
-      name: cron_jobs
-      description: "Exploiting writable cron jobs"
-      address:
-        ip: 10.128.0.13/32
-    
-    4:
-      name: suid_find
-      description: "SUID find command exploitation"
-      address:
-        ip: 10.128.0.14/32
-    
-    5:
-      name: suid_env_vars
-      description: "SUID binary with environment variables exploitation"
+      name: excessive_capabilities
+      description: "Escape Docker container through excessive capabilities"
       capabilities:
-        add: ['SYS_PTRACE']
+        add: ['SYS_ADMIN', 'NET_ADMIN', 'SYS_PTRACE', 'SYS_MODULE', 'DAC_READ_SEARCH', 'DAC_OVERRIDE']
       address:
-        ip: 10.128.0.15/32
-    
-    6:
-      name: python_path
-      description: "Python library path exploitation"
-      address:
-        ip: 10.128.0.16/32
-  
-    7:
-      name: nginx_config
-      description: "Nginx configuration exploitation"
-      capabilities:
-        add: ['NET_BIND_SERVICE', 'DAC_OVERRIDE']
-      ports:
-        - "80:80"
-      address:
-        ip: 10.128.0.17/32
-    
-    8:
-      name: postgresql
-      description: "PostgreSQL permissions exploitation"
-      capabilities:
-        add: ['NET_BIND_SERVICE', 'DAC_OVERRIDE']
-      address:
-        ip: 10.128.0.18/32
+        ip: 10.192.0.10/32
+      environment:
+        - "EXERCISE_TYPE=capability_abuse"
+        - "DIFFICULTY=hard"
+      flag_in_container: false  # Flag is not in container but on the VM host
 
 vms:
   pattern:
-    base_ip: 192.198.254.0/24
     student_prefix: "student"
     vagrant_path: "../vms/.vagrant/machines"
     vm_provider: "libvirt"
   
   groups:
+    # VM for dangerous mount exercise
     lab01:
-      range: [2, 2]  # Expanded range to match README
+      range: [2, 2]
       ssh_user: vagrant
-      ssh_key_template: "{vagrant_path}/{student_prefix}{id}/{vm_provider}/private_key"
-      exercises: [0, 1, 2, 3, 4, 5, 6, 7, 8]  # Include all exercises
+      ssh_key_template: "{vagrant_path}/{student_prefix}{id}-{vm_suffix}/{vm_provider}/private_key"
+      base_ip: 192.198.254.0/24
+      vm_suffix: "vm1"
+      exercises: [0]  # Dangerous mount exercise
+    
+    # VM for excessive capabilities exercise
+    lab02:
+      range: [2, 2]
+      ssh_user: vagrant
+      ssh_key_template: "{vagrant_path}/{student_prefix}{id}-{vm_suffix}/{vm_provider}/private_key"
+      base_ip: 192.198.253.0/24
+      vm_suffix: "vm2"
+      exercises: [1]  # Excessive capabilities exercise

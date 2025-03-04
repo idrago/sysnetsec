@@ -16,7 +16,7 @@ VM_CONFIG = {
 # Network Configuration
 NET_CONFIG = {
   base_subnet: ENV['NET_BASE_SUBNET'] || "192.198",     # Base network segment
-  bridge_prefix: (ENV['NET_BRIDGE_PREFIX'] || '10').to_i, # virbr prefix (virbr10+)
+  bridge_prefix: (ENV['NET_BRIDGE_PREFIX'] || '20').to_i, # virbr prefix (virbr10+)
   start_subnet: (ENV['NET_START_SUBNET'] || '254').to_i,  # First subnet (counts down)
   subnet_mask: ENV['NET_SUBNET_MASK'] || "255.255.255.0"
 }
