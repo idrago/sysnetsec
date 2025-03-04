@@ -11,8 +11,10 @@
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
-    registry_host: "192.168.129.137:5000"  # TODO: This should come from the inventory
-    docker_network: "10.128.0.0/9"         # Container network
+    # Define default values that can be overridden in inventory
+    registry_host: "{{ hostvars[inventory_hostname].registry_host | default('registry.example.com:5000') }}"
+    docker_network: "{{ hostvars[inventory_hostname].docker_network | default('10.128.0.0/9') }}"
+
   tasks:
     - name: Generate random passwords
       set_fact:
@@ -189,4 +191,4 @@
           - net-tools
           - tcpdump
           - bridge-utils
-        state: present            
+        state: present
