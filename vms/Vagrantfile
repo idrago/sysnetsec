@@ -93,7 +93,9 @@ class NetworkConfig
     
     interface = subnet_index*10
     @bridge = "virbr#{config[:bridge_prefix] + interface}"
-    @mac = generate_mac(subnet_index)
+    
+    # Fixed: Generate MAC address with both parameters
+    @mac = generate_mac(@subnet_index, @vm_num)
     
     # Calculate subnet from the base parameters
     # For VM1 use subnet 254, VM2 use 253, etc.
@@ -109,9 +111,10 @@ class NetworkConfig
   
   private
   
-  def generate_mac(subnet_index)
+  # Fixed: Explicitly pass both parameters
+  def generate_mac(subnet_index, vm_num)
     # Ensures unique MAC for each network
-    format("52:54:00:AA:%02X:%02X", subnet_index, @vm_num)
+    format("52:54:00:AA:%02X:%02X", subnet_index, vm_num)
   end
 end
 
@@ -236,8 +239,8 @@ Vagrant.configure("2") do |config|
         if should_create_networks  
           # Check which networks need to be created or updated
           networks_to_process = NETWORKS.select do |network|
-            # Process if network doesn't exist
-            !system("sudo virsh net-list --all | grep -q #{network.name}")
+            # Process if network doesn't exist or force update all networks
+            true # Changed to always process all networks to ensure consistency
           end
           
           if networks_to_process.empty?
@@ -251,11 +254,11 @@ Vagrant.configure("2") do |config|
               temp_file.write(generate_network_xml(network_config, NODES))
               temp_file.close
 
-              # Check if network exists
+              # First try to gracefully stop and undefine the network if it exists
               network_exists = system("sudo virsh net-list --all | grep -q #{network_config.name}")
               
               if network_exists
-                # Update the network if it exists
+                # Update the network if it exists - force destroy and undefine
                 puts "Updating existing network #{network_config.name}..."
                 system("sudo virsh net-destroy #{network_config.name} 2>/dev/null")
                 system("sudo virsh net-undefine #{network_config.name} 2>/dev/null")
