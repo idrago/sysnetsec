@@ -5,347 +5,307 @@ import paramiko
 import secrets
 import ipaddress
 from pathlib import Path
-import random
 import argparse
+import time
 
-class CTFExercise:
-    def __init__(self, exercise_id: int, config: dict, category_name: str):
-        self.id = exercise_id
-        self.config = config
-        self.category_name = category_name
-        self.name = f'{self.category_name}_{exercise_id:02d}'
-        self.exercise_config = self._get_exercise_config()
+def load_config(config_file='config.yaml'):
+    """Load the configuration file."""
+    with open(config_file, 'r') as f:
+        return yaml.safe_load(f)
 
-    def _get_exercise_config(self):
-        """Get exercise-specific configuration."""
-        # Get base exercise config
-        exercise_config = self.config['exercises']['configs'].get(int(self.id), {})
-        
-        # If empty, try with string ID
-        if not exercise_config:
-            exercise_config = self.config['exercises']['configs'].get(str(self.id), {})
-        
-        # If we have a config, merge with default capabilities
-        if exercise_config:
-            # Get default capabilities
-            capabilities = self.config['exercises']['capabilities'].copy()
-            # Update with exercise-specific capabilities if they exist
-            if 'capabilities' in exercise_config:
-                for key, value in exercise_config['capabilities'].items():
-                    if key == 'add':
-                        capabilities['add'] = list(set(capabilities['add'] + value))
-                    else:
-                        capabilities[key] = value
-            # Add capabilities back to exercise config
-            exercise_config['capabilities'] = capabilities
-            
-        return exercise_config
+def generate_flag():
+    """Generate a unique flag for an exercise."""
+    return f"flag{{CTF_{secrets.token_hex(16)}}}\n"
 
-    def get_ip_address(self, used_ips=None):
-        """Get IP address for the exercise."""
-        if used_ips is None:
-            used_ips = set()
-
-        # Case 1: Exercise has /32 address
-        if 'address' in self.exercise_config:
-            address = self.exercise_config['address']['ip']
-            if '/32' in address:
-                return address.split('/')[0]
-            # Case 2: Exercise has specific range
-            network = ipaddress.ip_network(address)
-            available_ips = set(str(ip) for ip in network.hosts()) - used_ips
-        else:
-            # Case 3: Use default range
-            network = ipaddress.ip_network(self.config['exercises']['default_address']['ip'])
-            available_ips = set(str(ip) for ip in network.hosts()) - used_ips
-        
-        if not available_ips:
-            raise ValueError(f"No available IPs in network {network}")
-        
-        ip = random.choice(list(available_ips))
-        used_ips.add(ip)
-        return ip
-
-    def generate_flag(self):
-        """Generate a unique flag for this exercise."""
-        return f"flag{{{secrets.token_hex(16)}}}\n"
-
-class VMGroup:
-    def __init__(self, name: str, config: dict, pattern: dict):
-        self.name = name
-        self.config = config
-        self.pattern = pattern
-        
-        # Get the base network, either from group config or pattern
-        base_ip = config.get('base_ip', pattern.get('base_ip'))
-        if not base_ip:
-            raise ValueError(f"No base IP found for VM group {name}")
-        
-        self.base_network = ipaddress.ip_network(base_ip)
-
-    def get_vms(self):
-        """Generate list of VM configurations based on range."""
-        start, end = self.config['range']
-        vms = []
-
-        for i in range(start, end + 1):
-            # Calculate IP address
-            ip = str(self.base_network[i])
-            
-            # Get VM suffix, either from group config or pattern
-            vm_suffix = self.config.get('vm_suffix', self.pattern.get('vm_suffix', 'vm1'))
-            
-            # Generate SSH key path
-            ssh_key = self.config['ssh_key_template'].format(
-                vagrant_path=self.pattern['vagrant_path'],
-                student_prefix=self.pattern['student_prefix'],
-                vm_suffix=vm_suffix,
-                id=str(i).zfill(2),
-                vm_provider=self.pattern['vm_provider']
-            )
-
-            vms.append({
-                'ip': ip,
-                'ssh_user': self.config['ssh_user'],
-                'ssh_key': ssh_key,
-                'exercises': self.config['exercises'],
-                'vm_type': vm_suffix  # Store VM type for reference
-            })
-
-        return vms
-
-class CTFDeployment:
-    def __init__(self, config_file='config.yaml', category_name=None):
-        self.config = self._load_config(config_file)
-        self.category_name = category_name or self.config.get('category_name', 'ctf_exercise')
-        
-    def _load_config(self, config_file):
-        with open(config_file, 'r') as f:
-            return yaml.safe_load(f)
-
-    def generate_docker_compose(self, vm_config):
-        """Generate docker-compose.yml for a specific VM."""
-        network_name = self.config['network']['name']
-        compose = {
-            'networks': {
-                network_name: {
-                    'name': network_name,
-                    'external': True  # Mark the network as external since we create it separately
-                }
-            },
-            'services': {}
-        }
-
-        used_ips = set()
-        for exercise_id in vm_config['exercises']:
-            ex = CTFExercise(exercise_id, self.config, self.category_name)
-            
-            # Network configuration
-            network_config = {
-                network_name: {}
+def generate_docker_compose(config, vm_config, category_name):
+    """Generate a simplified docker-compose.yml for a VM."""
+    network_name = config['network']['name']
+    compose = {
+        'networks': {
+            network_name: {
+                'name': network_name,
+                'external': False
             }
-            ip_address = ex.get_ip_address(used_ips)
-            if ip_address:
-                network_config[network_name]['ipv4_address'] = ip_address
-
-            # Start with default service configuration from global settings
-            default_service_config = self.config.get('service_defaults', {})
-
-            # Create base service config with required settings
-            service_config = {
-                'container_name': ex.name,
-                'hostname': ex.name,
-                'networks': network_config,
-            }
-
-            # Add build context if not explicitly set to false in exercise config
-            if ex.exercise_config.get('build', True) is not False:
-                service_config['build'] = ex.exercise_config.get('build_context', f'./{ex.name}')
-
-            # Merge in global default service settings
-            for key, value in default_service_config.items():
-                # Skip network settings as we've already set them
-                if key != 'networks':
-                    service_config[key] = value
-            
-            # Add standard volumes if flag and hints are enabled
-            volumes = []
-            
-            # Add flag volume if flag is enabled for this exercise and flag is in container
-            if ex.exercise_config.get('flag_enabled', True) and ex.exercise_config.get('flag_in_container', True):
-                flag_path = ex.exercise_config.get('flag_path', '/root/flag.txt')
-                flag_mount = ex.exercise_config.get('flag_mount', 
-                    f"{self.config['exercises']['base_path']}/{ex.name}/flag/flag.txt:{flag_path}:ro")
-                volumes.append(flag_mount)
-            
-            # Add hints volume if hints are enabled for this exercise
-            if ex.exercise_config.get('hints_enabled', True):
-                hints_path = ex.exercise_config.get('hints_path', '/home/student/hints')
-                hints_mount = ex.exercise_config.get('hints_mount',
-                    f"{self.config['exercises']['base_path']}/{ex.name}/hints:{hints_path}:ro")
-                volumes.append(hints_mount)
-            
-            # Set volumes in service config if we have any
-            if volumes:
-                service_config['volumes'] = volumes
-            
-            # Override with exercise-specific configuration
-            for key, value in ex.exercise_config.items():
-                # Skip special keys used internally or already processed
-                if key not in ['flag_enabled', 'hints_enabled', 'flag_path', 'hints_path', 
-                               'flag_mount', 'hints_mount', 'build', 'build_context', 'flag_in_container']:
-                    
-                    # For volumes, append rather than overwrite
-                    if key == 'volumes' and 'volumes' in service_config:
-                        service_config['volumes'].extend(value)
-                    # For capabilities, use the merged values from _get_exercise_config
-                    elif key == 'capabilities':
-                        service_config['cap_drop'] = value['drop']
-                        service_config['cap_add'] = value['add']
-                    # For all other keys, just set the value
-                    elif key not in ['name', 'description', 'address']:  # Skip metadata fields
-                        service_config[key] = value
-            
-            compose['services'][ex.name] = service_config
-            
-        return compose
+        },
+        'services': {}
+    }
     
-    def deploy_to_vm(self, vm_config):
-        """Deploy exercises to a specific VM."""
-        print(f"Deploying to {vm_config['ip']} ({vm_config['vm_type']})...")
+    # Get default service config
+    defaults = config.get('service_defaults', {})
+    
+    for ex_id in vm_config['exercises']:
+        ex_id = int(ex_id) if isinstance(ex_id, str) and ex_id.isdigit() else ex_id
+        ex = config['exercises']['configs'].get(ex_id)
+        if not ex:
+            continue
+            
+        service_name = ex['name']
         
+        # Start with default settings
+        service = {}
+        for key, value in defaults.items():
+            service[key] = value
+        
+        # Basic service settings
+        service['container_name'] = service_name
+        service['hostname'] = service_name
+        
+        # Set build context
+        if 'build' in ex:
+            service['build'] = f"./{service_name}"  # Updated path to include category subfolder
+        else:
+            service['build'] = f"./{service_name}"
+        
+        # Network config
+        ip = ex.get('address', '').split('/')[0] if 'address' in ex else None
+        service['networks'] = {network_name: {}}
+        if ip:
+            service['networks'][network_name]['ipv4_address'] = ip
+        
+        # Add volumes for flag and hints
+        service['volumes'] = [
+            f"{config['exercises']['base_path']}/{category_name}/{service_name}/flag/flag.txt:/root/flag.txt:ro",
+            f"{config['exercises']['base_path']}/{category_name}/{service_name}/hints:/home/student/hints:ro"
+        ]
+        
+        # Add exercise-specific volumes if defined
+        if 'volumes' in ex:
+            service['volumes'].extend(ex['volumes'])
+            
+        # Add ports if defined
+        if 'ports' in ex:
+            service['ports'] = ex['ports']
+        
+        # Add environment variables if defined
+        if 'environment' in ex:
+            service['environment'] = ex['environment']
+        
+        # Add capability overrides if specified
+        if 'cap_add' in ex:
+            service['cap_add'] = ex['cap_add']
+        
+        # Add service to compose file
+        compose['services'][service_name] = service
+        
+    return compose
+
+def safe_put(sftp, local_path, remote_path, ssh, force=False, verbose=False, backup=False):
+    """Safely put a file on a remote server, handling permissions."""
+    try:
+        # Check if file exists and handle appropriately
+        try:
+            sftp.stat(remote_path)
+            # File exists, handle according to force flag
+            if force:
+                if backup:  
+                    # Create a backup if forcing overwrite
+                    timestamp = time.strftime("%Y%m%d-%H%M%S")
+                    backup_path = f"{remote_path}.{timestamp}.bak"
+                    if verbose:
+                        print(f"Backing up existing file: {remote_path} -> {backup_path}")
+                    ssh.exec_command(f"cp {remote_path} {backup_path}")
+                
+                # Make sure we have write permissions
+                ssh.exec_command(f"chmod 644 {remote_path}")
+            else:
+                if verbose:
+                    print(f"Skipping existing file: {remote_path}")
+                return
+        except IOError:
+            # File doesn't exist, make sure parent directory exists
+            parent_dir = os.path.dirname(remote_path)
+            ssh.exec_command(f"mkdir -p {parent_dir}")
+        
+        # Create temporary file with guaranteed permissions
+        temp_path = f"/tmp/{os.path.basename(remote_path)}.{secrets.token_hex(8)}"
+        sftp.put(local_path, temp_path)
+        
+        # Move to final destination, handling permissions
+        ssh.exec_command(f"mv {temp_path} {remote_path}")
+        
+        # Set permissions based on file type
+        if remote_path.endswith('.sh') or '/bin/' in remote_path:
+            ssh.exec_command(f"chmod 755 {remote_path}")
+        elif '/hints/' in remote_path:
+            ssh.exec_command(f"chmod 644 {remote_path}")
+        else:
+            ssh.exec_command(f"chmod 644 {remote_path}")
+            
+        if verbose:
+            print(f"Copied: {local_path} -> {remote_path}")
+            
+    except Exception as e:
+        print(f"Error copying {local_path} to {remote_path}: {str(e)}")
+        raise
+
+def deploy_to_vm(config, vm_config, config_dir, category_name, force=False):
+    """Deploy exercises to a VM."""
+    print(f"Deploying {category_name} exercises to {vm_config['ip']} ({vm_config['vm_suffix']})...")
+    
+    try:
+        # Connect to the VM
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(
+            vm_config['ip'],
+            username=vm_config['ssh_user'],
+            key_filename=os.path.expanduser(vm_config['ssh_key'])
+        )
         
-        try:
-            ssh.connect(
-                vm_config['ip'],
-                username=vm_config['ssh_user'],
-                key_filename=os.path.expanduser(vm_config['ssh_key'])
-            )
-            
-            sftp = ssh.open_sftp()
-
-            # First deploy all exercise files and docker-compose
-            compose_config = self.generate_docker_compose(vm_config)
-            with open('/tmp/docker-compose.yml', 'w') as f:
-                yaml.dump(compose_config, f, 
-                        default_flow_style=False, 
-                        sort_keys=False,
-                        allow_unicode=True,
-                        canonical=False)
-            
-            # Check if any VM-level flags need to be deployed
-            vm_flags = self.config.get('vm_flags', {})
-            for flag_name, flag_config in vm_flags.items():
-                if vm_config['vm_type'] in flag_config.get('vm_types', []) or 'all' in flag_config.get('vm_types', []):
-                    # Create directory for the flag
-                    flag_dir = flag_config.get('path', '/root').rsplit('/', 1)[0]
-                    ssh.exec_command(f"sudo mkdir -p {flag_dir}")
-                    
-                    # Generate flag content
-                    flag_prefix = flag_config.get('prefix', self.config.get('flag_prefix', self.category_name.upper()))
-                    flag_content = f"flag{{{flag_prefix}_{secrets.token_hex(16)}}}\n"
-                    
-                    # Create temporary flag file
-                    with open('/tmp/vm_flag.txt', 'w') as f:
-                        f.write(flag_content)
-                    
-                    # Copy flag to VM
-                    sftp.put('/tmp/vm_flag.txt', '/tmp/vm_flag.txt')
-                    
-                    # Move flag to destination with proper permissions
-                    flag_path = flag_config.get('path', '/root/flag.txt')
-                    ssh.exec_command(f"sudo mv /tmp/vm_flag.txt {flag_path}")
-                    ssh.exec_command(f"sudo chmod {flag_config.get('permissions', '400')} {flag_path}")
-                    ssh.exec_command(f"sudo chown {flag_config.get('owner', 'root:root')} {flag_path}")
-                    
-                    print(f"Deployed VM-level flag '{flag_name}' to {vm_config['ip']} at {flag_path}")
-            
-            for exercise_id in vm_config['exercises']:
-                ex = CTFExercise(exercise_id, self.config, self.category_name)
+        sftp = ssh.open_sftp()
+        
+        # Create category directory
+        base_path = config['exercises']['base_path']
+        category_path = f"{base_path}/{category_name}"
+        ssh.exec_command(f"mkdir -p {category_path}")
+        
+        # Generate and deploy docker-compose.yml
+        compose = generate_docker_compose(config, vm_config, category_name)
+        with open('/tmp/docker-compose.yml', 'w') as f:
+            yaml.dump(compose, f, default_flow_style=False, sort_keys=False)
+        
+        compose_path = f"{category_path}/docker-compose.yml"
+        safe_put(sftp, '/tmp/docker-compose.yml', compose_path, ssh, force=True)
+        
+        # Deploy exercises
+        for ex_id in vm_config['exercises']:
+            ex_id = int(ex_id) if isinstance(ex_id, str) and ex_id.isdigit() else ex_id
+            ex = config['exercises']['configs'].get(ex_id)
+            if not ex:
+                continue
                 
-                # Skip flag deployment if flag is at VM level for this exercise
-                should_deploy_container_flag = ex.exercise_config.get('flag_in_container', True)
+            service_name = ex['name']
+            print(f"Processing exercise {service_name}...")
+            
+            # Create exercise directories
+            exercise_path = f"{category_path}/{service_name}"
+            ssh.exec_command(f"mkdir -p {exercise_path}/{{flag,hints}}")
+            
+            # Generate and deploy flag
+            flag = generate_flag()
+            flag_path = f"{exercise_path}/flag/flag.txt"
+            with open('/tmp/flag.txt', 'w') as f:
+                f.write(flag)
+            safe_put(sftp, '/tmp/flag.txt', flag_path, ssh, force=True)
+            ssh.exec_command(f"chmod 444 {flag_path}")
+            
+            # Get the build path - either from the build field or use service_name
+            build_path = ex.get('build', f"./{service_name}")
+            if isinstance(build_path, dict):
+                # If build is a dictionary, extract the context
+                build_path = build_path.get('context', f"./{service_name}")
+            
+            # Handle relative paths based on config file location
+            if build_path.startswith('./'):
+                build_path = build_path[2:]
+            
+            # Create full path relative to config file directory
+            full_build_path = os.path.join(config_dir, build_path)
+            print(f"Looking for build files in: {full_build_path}")
                 
-                # Create remote directories
-                ssh.exec_command(
-                    f"mkdir -p {self.config['exercises']['base_path']}/{ex.name}/{{flag,hints}}"
-                )
+            # Copy exercise files if they exist
+            local_exercise = Path(full_build_path)
+            if local_exercise.exists():
+                print(f"Found build directory: {local_exercise}")
                 
-                # Generate and copy flag if needed for container
-                if should_deploy_container_flag and ex.exercise_config.get('flag_enabled', True):
-                    flag = ex.generate_flag()
-                    flag_path = f"{self.config['exercises']['base_path']}/{ex.name}/flag/flag.txt"
-                    flag_file = sftp.file(flag_path, 'w')
-                    flag_file.write(flag)
-                    flag_file.close()
-                    
-                    # Set proper permissions for flag file
-                    ssh.exec_command(f"chmod 400 {flag_path}")
+                # Copy all files using safe_put
+                for file in local_exercise.rglob('*'):
+                    if file.is_file():
+                        relative_path = file.relative_to(local_exercise)
+                        remote_path = f"{exercise_path}/{relative_path}"
+                        safe_put(sftp, str(file), remote_path, ssh, force=force, verbose=False)
                 
-                # Copy exercise files and hints
-                local_path = Path(f'./{ex.name}')
-                if local_path.exists():
-                    # Copy main exercise files
-                    for file in local_path.rglob('*'):
-                        if file.is_file():
-                            remote_path = f"{self.config['exercises']['base_path']}/{ex.name}/{file.relative_to(local_path)}"
-                            sftp.put(str(file), remote_path)
-                    
-                    # Copy hints specifically
-                    hints_path = local_path / 'hints'
-                    if hints_path.exists() and ex.exercise_config.get('hints_enabled', True):
-                        for hint_file in hints_path.rglob('*'):
-                            if hint_file.is_file():
-                                remote_hint_path = f"{self.config['exercises']['base_path']}/{ex.name}/hints/{hint_file.relative_to(hints_path)}"
-                                sftp.put(str(hint_file), remote_hint_path)
-                                # Set appropriate permissions for hint files
-                                ssh.exec_command(f"chmod 644 {remote_hint_path}")
-                
-            # Copy docker-compose.yml
-            sftp.put('/tmp/docker-compose.yml', f"{self.config['exercises']['base_path']}/docker-compose.yml")
+                print(f"Copied all files for {service_name}")
+            else:
+                print(f"WARNING: Build directory not found: {local_exercise}")
+        
+        # Deploy service files
+        safe_put(sftp, 'ctf-service.py', '/tmp/ctf-service.py', ssh, force=True)
+        safe_put(sftp, 'ctf.service', '/tmp/ctf.service', ssh, force=True)
             
-            # Now set up the systemd service for future reboots
-            sftp.put('ctf-service.py', '/tmp/ctf-service.py')
-            sftp.put('ctf.service', '/tmp/ctf.service')
+        ssh.exec_command('sudo mv /tmp/ctf-service.py /usr/local/bin/ctf-service.py')
+        ssh.exec_command('sudo chmod +x /usr/local/bin/ctf-service.py')
+        ssh.exec_command('sudo mv /tmp/ctf.service /etc/systemd/system/ctf.service')
             
-            ssh.exec_command('sudo mv /tmp/ctf-service.py /usr/local/bin/ctf-service.py')
-            ssh.exec_command('sudo chmod +x /usr/local/bin/ctf-service.py')
-            ssh.exec_command('sudo mv /tmp/ctf.service /etc/systemd/system/ctf.service')
-            
-            # Initial start of containers
-            ssh.exec_command(f"cd {self.config['exercises']['base_path']} && docker compose up -d")
-            
-            # Enable service for future reboots
-            ssh.exec_command('sudo systemctl daemon-reload')
-            ssh.exec_command('sudo systemctl enable ctf.service')
-            ssh.exec_command('sudo systemctl start ctf.service')
-            
-            print(f"Deployment to {vm_config['ip']} ({vm_config['vm_type']}) completed successfully.")
-            
-        except Exception as e:
-            print(f"Error deploying to {vm_config['ip']} ({vm_config['vm_type']}): {str(e)}")
-        finally:
-            if 'sftp' in locals():
-                sftp.close()
+        # Start the containers
+        ssh.exec_command(f"cd {category_path} && docker compose up -d")
+        ssh.exec_command('sudo systemctl daemon-reload')
+        ssh.exec_command('sudo systemctl enable ctf.service')
+        ssh.exec_command('sudo systemctl restart ctf.service')
+        
+        print(f"Deployment of {category_name} exercises to {vm_config['ip']} completed successfully")
+        
+    except Exception as e:
+        print(f"Error deploying to {vm_config['ip']}: {str(e)}")
+    finally:
+        if 'sftp' in locals():
+            sftp.close()
+        if 'ssh' in locals():
             ssh.close()
-    
+
 def main():
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Deploy CTF exercises to VMs')
     parser.add_argument('--config', default='config.yaml', help='Path to configuration file')
-    parser.add_argument('--category', help='Category name for exercises (e.g., access_control, docker_escape)')
+    parser.add_argument('--category', required=True, help='Category name for exercises (e.g., access_control, docker_escape)')
+    parser.add_argument('--force', action='store_true', help='Force overwrite of existing files')
     args = parser.parse_args()
     
-    deployment = CTFDeployment(config_file=args.config, category_name=args.category)
+    # Get the directory containing the config file
+    config_dir = os.path.dirname(os.path.abspath(args.config))
+    if not config_dir:  # If config is in current directory
+        config_dir = os.getcwd()
+    
+    print(f"Using configuration directory: {config_dir}")
+    
+    # Load configuration file
+    config = load_config(args.config)
     
     # Process each VM group
-    for group_name, group_config in deployment.config['vms']['groups'].items():
-        vm_group = VMGroup(group_name, group_config, deployment.config['vms']['pattern'])
+    for group_name, group in config['vms']['groups'].items():
+        start, end = group['range']
         
-        # Deploy to each VM in the group
-        for vm in vm_group.get_vms():
-            deployment.deploy_to_vm(vm)
+        # Get base network (using either ip_network or base_ip for compatibility)
+        ip_network = group.get('ip_network', group.get('base_ip'))
+        if not ip_network:
+            # If not in group, try to get from vms.pattern
+            pattern = config.get('vms', {}).get('pattern', {})
+            ip_network = pattern.get('base_ip')
+        
+        network = ipaddress.ip_network(ip_network)
+        
+        # Get VM suffix
+        pattern = config.get('vms', {}).get('pattern', {})
+        vm_suffix = group.get('vm_suffix', pattern.get('vm_suffix', 'vm1'))
+        
+        # Get common VM settings
+        student_prefix = config['vms'].get('student_prefix', pattern.get('student_prefix', 'student'))
+        vagrant_path = config['vms'].get('vagrant_path', pattern.get('vagrant_path'))
+        vm_provider = config['vms'].get('vm_provider', pattern.get('vm_provider', 'libvirt'))
+        
+        for i in range(start, end + 1):
+            # Calculate IP address
+            ip = str(network[i])
+            
+            # Generate SSH key path
+            ssh_key_template = group.get('ssh_key', group.get('ssh_key_template'))
+            ssh_key = ssh_key_template.format(
+                vagrant_path=vagrant_path,
+                student_prefix=student_prefix,
+                vm_suffix=vm_suffix,
+                id=str(i).zfill(2),
+                vm_provider=vm_provider
+            )
+            
+            vm_config = {
+                'ip': ip,
+                'ssh_user': group['ssh_user'],
+                'ssh_key': ssh_key,
+                'exercises': group['exercises'],
+                'vm_suffix': vm_suffix
+            }
+            
+            deploy_to_vm(config, vm_config, config_dir, args.category, force=args.force)
 
 if __name__ == '__main__':
     main()

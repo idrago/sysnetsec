@@ -5,6 +5,7 @@ import time
 import subprocess
 import logging
 from pathlib import Path
+import os
 
 class CTFServiceManager:
     def __init__(self, base_path="/home/vagrant"):
@@ -73,37 +74,59 @@ class CTFServiceManager:
             self.logger.error(f"Error managing network: {str(e)}")
             raise
 
+    def find_compose_files(self):
+        """Find all docker-compose.yml files in the base directory and its subdirectories."""
+        compose_files = []
+        
+        # Look for docker-compose.yml in base directory
+        base_compose = self.base_path / "docker-compose.yml"
+        if base_compose.exists():
+            compose_files.append(base_compose)
+            
+        # Look for docker-compose.yml in category subdirectories
+        for category_dir in self.base_path.iterdir():
+            if category_dir.is_dir():
+                category_compose = category_dir / "docker-compose.yml"
+                if category_compose.exists():
+                    compose_files.append(category_compose)
+        
+        self.logger.info(f"Found {len(compose_files)} docker-compose files: {compose_files}")
+        return compose_files
+
     def start_services(self):
         """Start all CTF services using docker-compose."""
-        compose_file = self.base_path / "docker-compose.yml"
+        compose_files = self.find_compose_files()
         
-        if not compose_file.exists():
-            self.logger.error(f"docker-compose.yml not found in {self.base_path}")
+        if not compose_files:
+            self.logger.error(f"No docker-compose.yml files found in {self.base_path}")
             return False
-            
-        try:
-            # Pull images first
-            self.logger.info("Pulling latest images...")
-            subprocess.run(
-                ["docker", "compose", "-f", str(compose_file), "pull"],
-                check=True,
-                cwd=str(self.base_path)
-            )
-            
-            # Start services
-            self.logger.info("Starting services...")
-            subprocess.run(
-                ["docker", "compose", "-f", str(compose_file), "up", "-d"],
-                check=True,
-                cwd=str(self.base_path)
-            )
-            
-            self.logger.info("Services started successfully")
-            return True
-            
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error starting services: {str(e)}")
-            return False
+        
+        success = True
+        for compose_file in compose_files:
+            try:
+                self.logger.info(f"Starting services from {compose_file}...")
+                
+                # Pull images first
+                subprocess.run(
+                    ["docker", "compose", "-f", str(compose_file), "pull"],
+                    check=True,
+                    cwd=str(compose_file.parent)
+                )
+                
+                # Start services
+                subprocess.run(
+                    ["docker", "compose", "-f", str(compose_file), "up", "-d"],
+                    check=True,
+                    cwd=str(compose_file.parent)
+                )
+                
+                self.logger.info(f"Services from {compose_file} started successfully")
+                
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Error starting services from {compose_file}: {str(e)}")
+                success = False
+        
+        return success
 
     def run(self):
         """Main service routine."""
