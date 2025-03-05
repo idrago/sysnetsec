@@ -90,7 +90,7 @@ class NetworkConfig
     @subnet_index = subnet_index
     @vm_num = vm_num
     @name = "vm#{vm_num}net"
-    @bridge = "virbr#{config[:bridge_prefix] + subnet_index}"
+    @bridge = "virbr#{config[:bridge_prefix] + subnet_index*10"
     @mac = generate_mac(subnet_index)
     
     # Calculate subnet from the base parameters
