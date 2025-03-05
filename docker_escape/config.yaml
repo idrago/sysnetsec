@@ -11,48 +11,32 @@ service_defaults:
     interval: 30s
     timeout: 10s
     retries: 3
-  build: 
-    context: "./docker_escape"
-    dockerfile: "Dockerfile"
+  build: "./docker_escape"
   cap_drop: ['ALL']
-  cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE']
-
-# VM-level flags configuration
-vm_flags:
-  host_root_flag:
-    vm_types: ["vm1"]
-    path: "/root/host_flag.txt"
-    permissions: "400"
-    owner: "root:root"
-    
-  privileged_flag:
-    vm_types: ["vm2"]
-    path: "/opt/secret_flag/flag.txt"
-    permissions: "400"
-    owner: "root:root"
 
 exercises:
   base_path: /home/vagrant
   
   configs:
     0:
-      name: dangerous_mount
+      name: docker_escape
       description: "Escape Docker container through dangerous volume mounts"
       address: 10.128.0.10/32
+      cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER']
       volumes:
         - "/var/run/docker.sock:/var/run/docker.sock:rw"
       environment:
-        - "EXERCISE_TYPE=docker_socket_mount"
-        - "DIFFICULTY=medium"
+        - "DIFFICULTY=easy"
+      deploy_flags: False        
     
     1:
-      name: excessive_capabilities
+      name: docker_escape
       description: "Escape Docker container through excessive capabilities"
       address: 10.192.0.10/32
-      cap_add: ['SYS_ADMIN', 'NET_ADMIN', 'SYS_PTRACE', 'SYS_MODULE', 'DAC_READ_SEARCH', 'DAC_OVERRIDE']
+      cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER', 'SYS_ADMIN', 'SYS_MODULE'] 
       environment:
-        - "EXERCISE_TYPE=capability_abuse"
-        - "DIFFICULTY=hard"
+        - "DIFFICULTY=medium"
+      deploy_flags: False
 
 vms:
   student_prefix: "student"
@@ -68,6 +52,8 @@ vms:
       ip_network: 192.198.254.0/24
       vm_suffix: "vm1"
       exercises: [0]
+      host_flag: true
+      host_flag_random: True
     
     # VM for excessive capabilities exercise
     lab02:
@@ -77,3 +63,5 @@ vms:
       ip_network: 192.198.253.0/24
       vm_suffix: "vm2"
       exercises: [1]
+      host_flag: true
+      host_flag_random: True

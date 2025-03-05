@@ -15,15 +15,15 @@ VM_CONFIG = {
 
 # Network Configuration
 NET_CONFIG = {
-  base_subnet: ENV['NET_BASE_SUBNET'] || "192.198",     # Base network segment
-  bridge_prefix: (ENV['NET_BRIDGE_PREFIX'] || '20').to_i, # virbr prefix (virbr10+)
+  base_subnet: ENV['NET_BASE_SUBNET'] || "192.198",  # Base network segment
+  bridge_prefix: (ENV['NET_BRIDGE_PREFIX'] || '100').to_i, 
   start_subnet: (ENV['NET_START_SUBNET'] || '254').to_i,  # First subnet (counts down)
   subnet_mask: ENV['NET_SUBNET_MASK'] || "255.255.255.0"
 }
 
 # Docker Configuration
 DOCKER_CONFIG = {
-  registry_host: ENV['DOCKER_REGISTRY_HOST'] || "192.168.129.137:5000",
+  registry_host: ENV['DOCKER_REGISTRY_HOST'] || "localhost:5000",
   docker_network: ENV['DOCKER_NETWORK'] || "10.128.0.0/9"
 }
 

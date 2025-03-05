@@ -7,6 +7,7 @@ import ipaddress
 from pathlib import Path
 import argparse
 import time
+import random
 
 def load_config(config_file='config.yaml'):
     """Load the configuration file."""
@@ -64,9 +65,17 @@ def generate_docker_compose(config, vm_config, category_name):
         
         # Add volumes for flag and hints
         service['volumes'] = [
-            f"{config['exercises']['base_path']}/{category_name}/{service_name}/flag/flag.txt:/root/flag.txt:ro",
             f"{config['exercises']['base_path']}/{category_name}/{service_name}/hints:/home/student/hints:ro"
         ]
+        
+        # Add flag volume only if not using host_flag
+        deploy_flags = ex.get('deploy_flags', True)
+        if deploy_flags:
+            # Use specified flag path if available, otherwise use default
+            flag_path = ex.get('flag_path', '/root/flag.txt')
+            service['volumes'].append(
+                f"{config['exercises']['base_path']}/{category_name}/{service_name}/flag/flag.txt:{flag_path}:ro"
+            )
         
         # Add exercise-specific volumes if defined
         if 'volumes' in ex:
@@ -89,7 +98,31 @@ def generate_docker_compose(config, vm_config, category_name):
         
     return compose
 
-def safe_put(sftp, local_path, remote_path, ssh, force=False, verbose=False, backup=False):
+def get_random_file_path():
+    """Generate a random file path for hiding a flag on the host VM."""
+    base_dirs = [
+        '/var/log',
+        '/usr/local/share',
+        '/etc',
+        '/opt',
+        '/home',
+        '/var',
+        '/var/opt',
+        '/var/lib',
+        '/usr/local/bin',
+        '/usr/bin'
+    ]
+    
+    # Choose a random base directory
+    base = random.choice(base_dirs)
+    
+    # Generate a random subdirectory/filename
+    subdir = f".{secrets.token_hex(4)}"
+    filename = f".flag_{secrets.token_hex(4)}.txt"
+    
+    return os.path.join(base, subdir, filename)
+
+def safe_put(sftp, local_path, remote_path, ssh, force=False, verbose=False):
     """Safely put a file on a remote server, handling permissions."""
     try:
         # Check if file exists and handle appropriately
@@ -97,13 +130,12 @@ def safe_put(sftp, local_path, remote_path, ssh, force=False, verbose=False, bac
             sftp.stat(remote_path)
             # File exists, handle according to force flag
             if force:
-                if backup:  
-                    # Create a backup if forcing overwrite
-                    timestamp = time.strftime("%Y%m%d-%H%M%S")
-                    backup_path = f"{remote_path}.{timestamp}.bak"
-                    if verbose:
-                        print(f"Backing up existing file: {remote_path} -> {backup_path}")
-                    ssh.exec_command(f"cp {remote_path} {backup_path}")
+                # Create a backup if forcing overwrite
+                timestamp = time.strftime("%Y%m%d-%H%M%S")
+                backup_path = f"{remote_path}.{timestamp}.bak"
+                if verbose:
+                    print(f"Backing up existing file: {remote_path} -> {backup_path}")
+                ssh.exec_command(f"cp {remote_path} {backup_path}")
                 
                 # Make sure we have write permissions
                 ssh.exec_command(f"chmod 644 {remote_path}")
@@ -167,6 +199,40 @@ def deploy_to_vm(config, vm_config, config_dir, category_name, force=False):
         compose_path = f"{category_path}/docker-compose.yml"
         safe_put(sftp, '/tmp/docker-compose.yml', compose_path, ssh, force=True)
         
+        # Track if host flag is used for any exercises in this VM
+        host_flag_used = vm_config.get('host_flag', False)
+        host_flag_path = vm_config.get('host_flag_path', None)
+        host_flag_random = vm_config.get('host_flag_random', False)
+        host_flag_content = None
+        
+        # Generate a flag for the host if needed (only generate one flag per VM)
+        if host_flag_used:
+            host_flag_content = generate_flag()
+            
+            # Determine where to put the flag
+            if host_flag_random:
+                host_flag_path = get_random_file_path()
+                print(f"Generated random flag path: {host_flag_path}")
+            elif not host_flag_path:
+                host_flag_path = "/root/flag.txt"
+                
+            # Create flag file
+            with open('/tmp/host_flag.txt', 'w') as f:
+                f.write(host_flag_content)
+                
+            # Create directory for flag if it doesn't exist
+            ssh.exec_command(f"sudo mkdir -p {os.path.dirname(host_flag_path)}")
+            
+            # Copy flag to VM
+            safe_put(sftp, '/tmp/host_flag.txt', '/tmp/host_flag.txt', ssh, force=True)
+            
+            # Move to final destination with correct permissions (using sudo)
+            ssh.exec_command(f"sudo mv /tmp/host_flag.txt {host_flag_path}")
+            ssh.exec_command(f"sudo chown root:root {host_flag_path}")
+            ssh.exec_command(f"sudo chmod 400 {host_flag_path}")
+            
+            print(f"Deployed host flag to: {host_flag_path}")
+        
         # Deploy exercises
         for ex_id in vm_config['exercises']:
             ex_id = int(ex_id) if isinstance(ex_id, str) and ex_id.isdigit() else ex_id
@@ -181,14 +247,18 @@ def deploy_to_vm(config, vm_config, config_dir, category_name, force=False):
             exercise_path = f"{category_path}/{service_name}"
             ssh.exec_command(f"mkdir -p {exercise_path}/{{flag,hints}}")
             
-            # Generate and deploy flag
-            flag = generate_flag()
-            flag_path = f"{exercise_path}/flag/flag.txt"
-            with open('/tmp/flag.txt', 'w') as f:
-                f.write(flag)
-            safe_put(sftp, '/tmp/flag.txt', flag_path, ssh, force=True)
-            ssh.exec_command(f"chmod 444 {flag_path}")
-            
+            # Handle flag deployment for containers
+            deploy_flags = ex.get('deploy_flags', True)
+            if deploy_flags:
+                flag = generate_flag()
+                flag_path = f"{exercise_path}/flag/flag.txt"
+                with open('/tmp/flag.txt', 'w') as f:
+                    f.write(flag)
+                safe_put(sftp, '/tmp/flag.txt', flag_path, ssh, force=True)
+                ssh.exec_command(f"sudo chmod 400 {flag_path}")
+                ssh.exec_command(f"sudo chown root:root {host_flag_path}")
+                print(f"Deployed container flag to: {flag_path}")
+
             # Get the build path - either from the build field or use service_name
             build_path = ex.get('build', f"./{service_name}")
             if isinstance(build_path, dict):
@@ -302,7 +372,10 @@ def main():
                 'ssh_user': group['ssh_user'],
                 'ssh_key': ssh_key,
                 'exercises': group['exercises'],
-                'vm_suffix': vm_suffix
+                'vm_suffix': vm_suffix,
+                'host_flag': group.get('host_flag', False),
+                'host_flag_path': group.get('host_flag_path', None),
+                'host_flag_random': group.get('host_flag_random', False)
             }
             
             deploy_to_vm(config, vm_config, config_dir, args.category, force=args.force)

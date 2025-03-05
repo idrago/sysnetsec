@@ -214,6 +214,12 @@ class WireGuardConfigurator:
             f"PrivateKey = {self.server.private_key}",
             f"ListenPort = {self.server.port}",
             "",
+            "# Clean old rules in case they have remained",
+            "PostUp = ip rule show | grep \"lookup 1\" | sed -E 's/^([0-9]+).*/\\1/' | xargs -I{} ip rule del priority {}",
+            "PostUp = iptables -D FORWARD -j chain-pg",
+            "PostUp = iptables -F chain-pg",
+            "PostUp = iptables -X chain-pg",
+            "",
             "# Create and setup main chain for filtering",
             "PostUp = iptables -N chain-pg",
             "PostUp = iptables -I FORWARD -j chain-pg",
@@ -222,6 +228,7 @@ class WireGuardConfigurator:
             "PostDown = iptables -D FORWARD -j chain-pg",
             "PostDown = iptables -F chain-pg",
             "PostDown = iptables -X chain-pg",
+            "PostDown = ip rule show | grep \"lookup 1\" | sed -E 's/^([0-9]+).*/\\1/' | xargs -I{} ip rule del priority {}",
             ""
         ]
         
