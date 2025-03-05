@@ -88,9 +88,10 @@ class NetworkConfig
   
   def initialize(subnet_index, vm_num, config)
     @subnet_index = subnet_index
+    @interface = subnet_index*10
     @vm_num = vm_num
     @name = "vm#{vm_num}net"
-    @bridge = "virbr#{config[:bridge_prefix] + subnet_index*10"
+    @bridge = "virbr#{config[:bridge_prefix] + interface}"
     @mac = generate_mac(subnet_index)
     
     # Calculate subnet from the base parameters
