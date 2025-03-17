@@ -11,6 +11,10 @@
   register: client_public_key
   changed_when: true
 
+- name: Set facts for template use
+  set_fact:
+    client_key: "{{ client_private_key.stdout }}"  
+
 - name: Determine VM types for this student
   set_fact:
     student_vm_types: "{{ student_assignments[student_id | string] | default([1]) }}"
@@ -68,8 +72,8 @@
 
 - name: Generate client config file
   template:
-    src: wg0.conf.j2
-    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/student_{{ '%03d' | format(student_id) }}.conf"
+    src: client.conf.j2
+    dest: "{{ wireguard_config_dir | default('../.vpnconfig') }}/student_{{ '%03d' | format(student_id) }}.conf"
     mode: '0600'
   vars:
     wg_client_ip: "{{ ctf_environment.wireguard.client_prefix }}.{{ student_id }}"
@@ -81,7 +85,8 @@
       '[Peer]',
       '# Student ' + student_id | string + ' peer configuration',
       'PublicKey = ' + client_public_key.stdout,
-      'AllowedIPs = ' + ctf_environment.wireguard.client_prefix + '.' + student_id | string + '/32'
+      'AllowedIPs = ' + ctf_environment.wireguard.client_prefix + '.' + student_id | string + '/32',
+      ''
     ] }}"
 
 - name: Generate iptables rules for student
@@ -111,6 +116,7 @@
       # Allow communication between the WireGuard client and this VM
       PostUp = iptables -A chain-pg -s {{ wg_client_ip }}/32 -d {{ vm_data.vm_ip }}/32 -j ACCEPT
       PostUp = iptables -A chain-pg -s {{ vm_data.vm_ip }}/32 -d {{ wg_client_ip }}/32 -j ACCEPT
+      
       {% endfor %}
       
       # Block VMs from accessing unauthorized networks
@@ -124,6 +130,3 @@
       # Cleanup rules
       PostDown = ip rule del from {{ wg_client_ip }}/32 table {{ student_table }}
 
-- name: Set facts for template use
-  set_fact:
-    client_key: "{{ client_private_key.stdout }}"

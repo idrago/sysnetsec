@@ -8,7 +8,7 @@
 
 - name: Create output directory for WireGuard configs
   file:
-    path: "{{ wireguard_config_dir | default('./.vpnconfig') }}"
+    path: "{{ wireguard_config_dir | default('../.vpnconfig') }}"
     state: directory
     mode: '0755'
 
@@ -68,24 +68,24 @@
 - name: Create server configuration
   template:
     src: wg0.conf.j2
-    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/wg0.conf"
+    dest: "{{ wireguard_config_dir | default('../.vpnconfig') }}/wg0.conf"
     mode: '0600'
 
 - name: Save subnet mapping to file
   copy:
     content: "{{ subnet_mapping | to_nice_json }}"
-    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/subnet_mapping.json"
+    dest: "{{ wireguard_config_dir | default('../.vpnconfig') }}/subnet_mapping.json"
     mode: '0644'
 
 - name: Generate human-readable subnet mapping
   template:
     src: subnet_mapping.md.j2
-    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/subnet_mapping.md"
+    dest: "{{ wireguard_config_dir | default('../.vpnconfig') }}/subnet_mapping.md"
     mode: '0644'
 
 # Only activate if explicitly requested
 - name: Activate WireGuard configuration
-  shell: "wg-quick up {{ wireguard_config_dir | default('.vpnconfig') }}/wg0.conf"
+  shell: "wg-quick up {{ wireguard_config_dir | default('../.vpnconfig') }}/wg0.conf"
   register: wg_activate
   changed_when: wg_activate.rc == 0
   failed_when: wg_activate.rc != 0

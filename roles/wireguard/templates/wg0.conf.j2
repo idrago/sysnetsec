@@ -25,6 +25,6 @@ PostDown = ip rule show | grep "lookup 1" | sed -E 's/^([0-9]+).*/\1/' | xargs -
 
 {% endfor %}
 
-{% for peer_line in wg_peers | default([]) %}
+{% for peer_line in wg_peer_configs | default([]) %}
 {{ peer_line }}
 {% endfor %}
