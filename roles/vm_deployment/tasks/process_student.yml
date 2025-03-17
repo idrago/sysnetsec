@@ -1,0 +1,12 @@
+# roles/vm_deployment/tasks/process_student.yml
+---
+- name: Get VM types for student
+  set_fact:
+    vm_types: "{{ student_assignments[student_id | string] | default([1]) }}"
+  changed_when: false
+
+- name: Process VM types for this student
+  include_tasks: deploy_vm.yml
+  loop: "{{ vm_types }}"
+  loop_control:
+    loop_var: vm_type_id

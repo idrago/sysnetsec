@@ -1,0 +1,21 @@
+# roles/vm_deployment/tasks/main.yml
+---
+- name: Get existing VMs and containers
+  command: lxc list --format=json
+  register: instance_list
+  changed_when: false
+
+- name: Parse JSON output
+  set_fact:
+    existing_instances: "{{ instance_list.stdout | from_json | map(attribute='name') | list }}"
+
+- name: Build student VM assignments
+  include_tasks: build_student_assignments.yml
+
+# Process each student and create their assigned VMs
+- name: Process students
+  include_tasks: process_student.yml
+  loop: "{{ range(ctf_environment.students.start_id, ctf_environment.students.start_id + ctf_environment.students.count) | list }}"
+  loop_control:
+    loop_var: student_id
+

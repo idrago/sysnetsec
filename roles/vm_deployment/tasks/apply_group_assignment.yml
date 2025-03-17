@@ -1,0 +1,9 @@
+# roles/vm_deployment/tasks/apply_group_assignment.yml
+---
+- name: Apply group assignment to student
+  set_fact:
+    student_assignments: "{{ student_assignments | combine({student_id | string: group.vm_types}, recursive=True) }}"
+  loop: "{{ group.student_ids }}"
+  loop_control:
+    loop_var: student_id
+  changed_when: false

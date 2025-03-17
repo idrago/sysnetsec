@@ -1,0 +1,10 @@
+# playbooks/site.yml
+---
+- name: Set up CTF infrastructure
+  import_playbook: infrastructure.yml
+  tags: infrastructure
+
+- name: Set up WireGuard VPN
+  import_playbook: vpn.yml
+  tags: vpn
+

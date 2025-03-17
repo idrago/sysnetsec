@@ -1,0 +1,32 @@
+# roles/vm_management/tasks/stop.yml
+---
+- name: Get all VMs and containers
+  command: lxc list --format=json
+  register: all_instances
+  changed_when: false
+
+- name: Parse JSON output
+  set_fact:
+    instances: "{{ all_instances.stdout | from_json }}"
+  changed_when: false
+
+- name: Filter student VMs
+  set_fact:
+    student_instances: "{{ instances | selectattr('name', 'match', '^student[0-9]+-') | list }}"
+  changed_when: false
+
+- name: Stop all student VMs
+  command: lxc stop {{ item.name }}
+  loop: "{{ student_instances }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: stop_result
+  failed_when: stop_result.rc != 0 and 'not found' not in stop_result.stderr
+  changed_when: stop_result.rc == 0
+  when: item.status == "Running"
+
+- name: Show stopped VMs
+  debug:
+    msg: "Stopped {{ student_instances | selectattr('status', 'equalto', 'Running') | list | length }} VMs"
+
+

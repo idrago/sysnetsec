@@ -1,0 +1,92 @@
+# roles/wireguard/tasks/main.yml
+---
+- name: Ensure WireGuard is installed
+  apt:
+    name: wireguard
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Create output directory for WireGuard configs
+  file:
+    path: "{{ wireguard_config_dir | default('./.vpnconfig') }}"
+    state: directory
+    mode: '0755'
+
+- name: Generate server private key
+  shell: wg genkey
+  register: server_private_key
+  changed_when: true
+  no_log: true
+
+- name: Generate server public key from private key
+  shell: echo {{ server_private_key.stdout }} | wg pubkey
+  register: server_public_key
+  changed_when: true
+
+- name: Initialize variables for WireGuard configs
+  set_fact:
+    wg_peer_configs: []
+    wg_peer_rules: []
+    subnet_mapping: {}
+    student_assignments: {}
+  changed_when: false
+
+# Build the student assignment structure
+- name: Set default group assignment
+  set_fact:
+    default_group: "{{ ctf_environment.student_groups | selectattr('name', 'equalto', 'default') | first | default({'vm_types': [1]}) }}"
+  changed_when: false
+
+- name: Assign default group VMs to all students
+  set_fact:
+    student_assignments: "{{ student_assignments | combine({student_id | string: default_group.vm_types}) }}"
+  loop: "{{ range(ctf_environment.students.start_id, ctf_environment.students.start_id + ctf_environment.students.count) | list }}"
+  loop_control:
+    loop_var: student_id
+  changed_when: false
+
+- name: Generate WireGuard configurations for each student
+  include_tasks: generate_client_config.yml
+  loop: "{{ range(ctf_environment.students.start_id, ctf_environment.students.start_id + ctf_environment.students.count) | list }}"
+  loop_control:
+    loop_var: student_id
+    label: "Student {{ student_id }}"
+
+- name: Debug peer configs and rules
+  debug:
+    msg:
+      - "Peer configs: {{ wg_peer_configs | length }} items"
+      - "Peer rules: {{ wg_peer_rules | length }} items"
+    verbosity: 1
+
+- name: Ensure wg_peer_configs and wg_peer_rules are defined
+  set_fact:
+    wg_peer_configs: "{{ wg_peer_configs | default([]) }}"
+    wg_peer_rules: "{{ wg_peer_rules | default([]) }}"
+  changed_when: false
+
+- name: Create server configuration
+  template:
+    src: wg0.conf.j2
+    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/wg0.conf"
+    mode: '0600'
+
+- name: Save subnet mapping to file
+  copy:
+    content: "{{ subnet_mapping | to_nice_json }}"
+    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/subnet_mapping.json"
+    mode: '0644'
+
+- name: Generate human-readable subnet mapping
+  template:
+    src: subnet_mapping.md.j2
+    dest: "{{ wireguard_config_dir | default('.vpnconfig') }}/subnet_mapping.md"
+    mode: '0644'
+
+# Only activate if explicitly requested
+- name: Activate WireGuard configuration
+  shell: "wg-quick up {{ wireguard_config_dir | default('.vpnconfig') }}/wg0.conf"
+  register: wg_activate
+  changed_when: wg_activate.rc == 0
+  failed_when: wg_activate.rc != 0
+  when: activate_wireguard | default(false) | bool

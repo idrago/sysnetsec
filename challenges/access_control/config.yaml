@@ -86,7 +86,7 @@ vms:
       range: [2, 2]
       ssh_user: vagrant
       ssh_key: "{vagrant_path}/{student_prefix}{id}-{vm_suffix}/{vm_provider}/private_key"
-      ip_network: 192.198.254.0/24
+      ip_network: 192.168.254.0/24
       vm_suffix: "vm1"
       exercises: [0, 1, 2, 3, 4, 5, 6, 7, 8]
       host_flag: False

@@ -1,0 +1,21 @@
+# roles/vm_configuration/tasks/main.yml
+---
+- name: Configure VMs for Docker and forwarding
+  block:
+    - name: Get all VM instances
+      command: lxc list --format=json
+      register: vm_instances
+      changed_when: false
+
+    - name: Parse VM instances
+      set_fact:
+        student_vms: "{{ vm_instances.stdout | from_json | selectattr('name', 'match', '^student[0-9]+-') | list }}"
+      changed_when: false
+
+    - name: Configure each VM
+      include_tasks: configure_vm.yml
+      loop: "{{ student_vms }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name }}"
+      when: vm.state is defined and vm.state.status == "Running"
