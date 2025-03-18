@@ -34,7 +34,7 @@
         --config=limits.cpu={{ vm_config.cpus }}
         --config=limits.memory={{ vm_config.memory }}MB
         --network {{ network_name }}
-        --device root,pool=default,size={{ vm_config.disk_size | default('10GB') }}      
+        --storage default
       register: instance_create
       failed_when: instance_create.rc != 0 and 'already exists' not in instance_create.stderr | default('')
       changed_when: instance_create.rc == 0

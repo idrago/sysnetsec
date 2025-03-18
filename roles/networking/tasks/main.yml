@@ -21,13 +21,25 @@
       debug:
         msg: "Creating networks for VM types: {{ required_vm_types }}"
 
+    # - name: Create LXD network for VM type
+    #   command: "lxc network create vm{{ item }}net"
+    #   register: network_create
+    #   failed_when: network_create.rc != 0 and 'already exists' not in network_create.stderr | default('')
+    #   changed_when: network_create.rc == 0
+    #   with_items: "{{ required_vm_types }}"
+    #   when: "'vm' + item | string + 'net' not in existing_networks"
+
     - name: Create LXD network for VM type
-      command: "lxc network create vm{{ item }}net"
+      command: >
+        lxc network create vm{{ item }}net 
+        ipv4.address={{ ctf_environment.networking.base_subnet }}.{{ ctf_environment.networking.start_subnet - (item - 1) }}.1/24 
+        ipv4.nat=true 
+        ipv4.dhcp=true
       register: network_create
       failed_when: network_create.rc != 0 and 'already exists' not in network_create.stderr | default('')
       changed_when: network_create.rc == 0
       with_items: "{{ required_vm_types }}"
-      when: "'vm' + item | string + 'net' not in existing_networks"
+      when: "'vm' + item | string + 'net' not in existing_networks"      
       
     - name: Configure network subnet
       command: >
