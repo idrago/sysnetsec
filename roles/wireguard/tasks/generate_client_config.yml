@@ -113,10 +113,12 @@
       # Allow this VM to access internet
       PostUp = iptables -A chain-pg -s {{ vm_data.vm_ip }}/32 -o {{ ctf_environment.wireguard.internet_interface }} ! -d {{ ctf_environment.wireguard.blocked_networks }} -j ACCEPT
       
+      # Enable NAT for VM traffic to internet
+      PostUp = iptables -t nat -A POSTROUTING -s {{ vm_data.vm_ip }}/32 -o {{ ctf_environment.wireguard.internet_interface }} -j MASQUERADE
+      
       # Allow communication between the WireGuard client and this VM
       PostUp = iptables -A chain-pg -s {{ wg_client_ip }}/32 -d {{ vm_data.vm_ip }}/32 -j ACCEPT
       PostUp = iptables -A chain-pg -s {{ vm_data.vm_ip }}/32 -d {{ wg_client_ip }}/32 -j ACCEPT
-      
       {% endfor %}
       
       # Block VMs from accessing unauthorized networks
@@ -127,6 +129,10 @@
       # Final drop rule for the WireGuard client
       PostUp = iptables -A chain-pg -s {{ wg_client_ip }}/32 -j DROP
       
-      # Cleanup rules
+      # Cleanup rules for nat table
+      {% for vm_name, vm_data in student_subnets.items() %}
+      PostDown = iptables -t nat -D POSTROUTING -s {{ vm_data.vm_ip }}/32 -o {{ ctf_environment.wireguard.internet_interface }} -j MASQUERADE
+      {% endfor %}
+      
+      # Cleanup routing rules
       PostDown = ip rule del from {{ wg_client_ip }}/32 table {{ student_table }}
-
