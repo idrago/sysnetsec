@@ -71,11 +71,45 @@
         - not instance_exists
         - (nic_device is not defined or nic_device == "")
         
-    - name: Configure static IP for new instance
-      command: "lxc config device set {{ instance_name }} {{ nic_device }} ipv4.address={{ ip_address }}"
-      register: ip_set
-      changed_when: ip_set.rc == 0
+    # - name: Configure static IP for new instance
+    #   command: "lxc config device set {{ instance_name }} {{ nic_device }} ipv4.address={{ ip_address }}"
+    #   register: ip_set
+    #   changed_when: ip_set.rc == 0
+    #   when: not instance_exists
+
+    - name: Find existing systemd network configuration files
+      command: >
+        lxc exec {{ instance_name }} -- find /etc/systemd/network/ -name "*.network"
+      register: network_files
+      changed_when: false
       when: not instance_exists
+
+    - name: Backup existing network configuration files
+      command: >
+        lxc exec {{ instance_name }} -- bash -c "for file in {{ network_files.stdout_lines | join(' ') }}; do mv $file $file.bak; done"
+      when: 
+        - not instance_exists
+        - network_files.stdout != ""
+
+    - name: Create static network configuration
+      command: >
+        lxc exec {{ instance_name }} -- bash -c "cat > /etc/systemd/network/10-static.network << EOF
+        [Match]
+        Name=enp5s0
+        
+        [Network]
+        Address={{ ip_address }}/24
+        Gateway={{ ctf_environment.networking.base_subnet }}.{{ ctf_environment.networking.start_subnet - (vm_type_id - 1) }}.1
+        EOF"
+      register: network_config
+      changed_when: network_config.rc == 0
+      when: not instance_exists
+
+    - name: Restart networking inside VM
+      command: >
+        lxc exec {{ instance_name }} -- systemctl restart systemd-networkd
+      changed_when: true
+      when: not instance_exists      
       
     # Wait for VM agent to be ready before installing packages
     - name: Wait for VM agent to be ready (60 seconds max)
