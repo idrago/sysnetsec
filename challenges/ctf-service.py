@@ -8,7 +8,7 @@ from pathlib import Path
 import os
 
 class CTFServiceManager:
-    def __init__(self, base_path="/home/vagrant"):
+    def __init__(self, base_path="/root"):
         self.base_path = Path(base_path)
         self.logger = self._setup_logging()
         
@@ -108,14 +108,14 @@ class CTFServiceManager:
                 
                 # Pull images first
                 subprocess.run(
-                    ["docker", "compose", "-f", str(compose_file), "pull"],
+                    ["docker-compose", "-f", str(compose_file), "pull"],
                     check=True,
                     cwd=str(compose_file.parent)
                 )
                 
                 # Start services
                 subprocess.run(
-                    ["docker", "compose", "-f", str(compose_file), "up", "-d"],
+                    ["docker-compose", "-f", str(compose_file), "up", "-d"],
                     check=True,
                     cwd=str(compose_file.parent)
                 )

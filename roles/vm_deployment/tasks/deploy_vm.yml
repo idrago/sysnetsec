@@ -116,6 +116,8 @@
           [Network]
           Address={{ ip_address }}/24
           Gateway={{ ctf_environment.networking.base_subnet }}.{{ ctf_environment.networking.start_subnet - (vm_type_id - 1) }}.1
+          DNS=8.8.8.8 8.8.4.4
+          Domains=~.
         dest: "/tmp/10-static.network"
       when: 
         - not instance_exists

@@ -3,7 +3,7 @@
 ctf_environment:
 
   students:
-    count: 2
+    count: 1
     start_id: 2
   
   # Default VM configuration
@@ -70,7 +70,7 @@ ctf_environment:
         - net-tools
         - tcpdump
         - bridge-utils
-      subnet_range: "10.192.0.0/10"
+      subnet_range: "10.192.0.0/11"
     
     # VM Type 3
     - id: 3
@@ -90,7 +90,7 @@ ctf_environment:
         - net-tools
         - tcpdump
         - bridge-utils
-      subnet_range: "10.160.0.0/11"
+      subnet_range: "10.224.0.0/11"
     
   # Custom VM assignments per student group
   student_groups:
