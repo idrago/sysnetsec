@@ -30,13 +30,6 @@ ctf_environment:
     internet_interface: "bond0"
     blocked_networks: "192.168.0.0/16"
   
-  # Challenge configuration
-  challenges:
-    default_categories:
-      - access_control
-      - docker_escape
-    default_enabled: true
-  
   # VM type definitions with custom configurations
   vm_types:
     # VM Type 1
@@ -82,11 +75,10 @@ ctf_environment:
     # VM Type 3
     - id: 3
       name: "vm3"
-      description: "High Performance VM"
       type: "vm"
       cpus: 2
-      memory: 1024
-      disk_size: 20
+      memory: 512
+      disk_size: 10
       image: "images:debian/12"
       packages:
         - iptables-persistent
@@ -104,7 +96,7 @@ ctf_environment:
   student_groups:
     # Default group (if no specific group is assigned)
     - name: "default"
-      vm_types: [1, 2]
+      vm_types: [1, 2, 3]
     
     # # Advanced group with more VMs
     # - name: "advanced"
