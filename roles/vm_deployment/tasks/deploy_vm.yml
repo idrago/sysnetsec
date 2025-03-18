@@ -77,12 +77,27 @@
     #   changed_when: ip_set.rc == 0
     #   when: not instance_exists
 
+    # Wait for VM agent to be ready before network configuration
+    - name: Wait for VM agent to be ready for network configuration (60 seconds max)
+      command: lxc exec {{ instance_name }} -- echo "VM agent is ready"
+      register: agent_network_check
+      failed_when: false
+      changed_when: false
+      until: agent_network_check.rc == 0
+      retries: 12  # Try 12 times
+      delay: 5     # 5 seconds between retries (60 seconds total)
+      when: 
+        - not instance_exists
+        - vm_config.type == 'vm'
+
     - name: Find existing systemd network configuration files
       command: >
         lxc exec {{ instance_name }} -- find /etc/systemd/network/ -name "*.network"
       register: network_files
       changed_when: false
-      when: not instance_exists
+      when: 
+        - not instance_exists
+        - agent_network_check.rc == 0 or vm_config.type != 'vm'
 
     - name: Backup existing network configuration files
       command: >
@@ -90,29 +105,39 @@
       when: 
         - not instance_exists
         - network_files.stdout != ""
+        - agent_network_check.rc == 0 or vm_config.type != 'vm'
 
-    - name: Create static network configuration
+    - name: Create static network configuration file
+      copy:
+        content: |
+          [Match]
+          Name=enp5s0
+          
+          [Network]
+          Address={{ ip_address }}/24
+          Gateway={{ ctf_environment.networking.base_subnet }}.{{ ctf_environment.networking.start_subnet - (vm_type_id - 1) }}.1
+        dest: "/tmp/10-static.network"
+      when: 
+        - not instance_exists
+
+    - name: Copy network file into VM
       command: >
-        lxc exec {{ instance_name }} -- bash -c "cat > /etc/systemd/network/10-static.network << EOF
-        [Match]
-        Name=enp5s0
-        
-        [Network]
-        Address={{ ip_address }}/24
-        Gateway={{ ctf_environment.networking.base_subnet }}.{{ ctf_environment.networking.start_subnet - (vm_type_id - 1) }}.1
-        EOF"
-      register: network_config
-      changed_when: network_config.rc == 0
-      when: not instance_exists
+        lxc file push /tmp/10-static.network {{ instance_name }}/etc/systemd/network/10-static.network
+      register: network_config_copy
+      changed_when: network_config_copy.rc == 0
+      when: 
+        - not instance_exists
 
     - name: Restart networking inside VM
       command: >
         lxc exec {{ instance_name }} -- systemctl restart systemd-networkd
       changed_when: true
-      when: not instance_exists      
-      
+      when: 
+        - not instance_exists
+        - agent_network_check.rc == 0 or vm_config.type != 'vm'
+
     # Wait for VM agent to be ready before installing packages
-    - name: Wait for VM agent to be ready (60 seconds max)
+    - name: Wait for VM agent to be ready for package installation (60 seconds max)
       command: lxc exec {{ instance_name }} -- echo "VM agent is ready"
       register: agent_check
       failed_when: false
@@ -136,7 +161,7 @@
         - vm_config.packages is defined
         - vm_config.packages | length > 0
         - agent_check.rc == 0 or vm_config.type != 'vm'
-      ignore_errors: yes
+      ignore_errors: yes        
 
   rescue:
     - name: Log failure
