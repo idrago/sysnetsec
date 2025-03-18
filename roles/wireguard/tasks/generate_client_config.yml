@@ -105,13 +105,16 @@
       # Allow student to reach target networks and receive responses
       PostUp = iptables -A chain-pg -s {{ wg_client_ip }}/32 -d {{ ctf_environment.wireguard.student_visible_network }} -j ACCEPT
       PostUp = iptables -A chain-pg -s {{ ctf_environment.wireguard.student_visible_network }} -d {{ wg_client_ip }}/32 -j ACCEPT
-      
       {% for vm_name, vm_data in student_subnets.items() %}
+      
       # Routes for {{ vm_name }} ({{ vm_data.vm_ip }}) handling subnet {{ vm_data.subnet }}
-      PostUp = ip route add {{ vm_data.subnet }} via {{ vm_data.vm_ip }} table {{ student_table }}
+      PostUp = ip route replace {{ vm_data.subnet }} via {{ vm_data.vm_ip }} table {{ student_table }}
       
       # Allow this VM to access internet
       PostUp = iptables -A chain-pg -s {{ vm_data.vm_ip }}/32 -o {{ ctf_environment.wireguard.internet_interface }} ! -d {{ ctf_environment.wireguard.blocked_networks }} -j ACCEPT
+      
+      # Allow established and related connections back to the VM
+      PostUp = iptables -A chain-pg -d {{ vm_data.vm_ip }}/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
       
       # Enable NAT for VM traffic to internet
       PostUp = iptables -t nat -A POSTROUTING -s {{ vm_data.vm_ip }}/32 -o {{ ctf_environment.wireguard.internet_interface }} -j MASQUERADE
