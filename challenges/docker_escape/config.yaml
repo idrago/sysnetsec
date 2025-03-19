@@ -21,7 +21,7 @@ exercises:
     0:
       name: docker_escape
       description: "Escape Docker container through dangerous volume mounts"
-      address: 10.128.0.10/32
+      address: 10.192.0.10/32
       cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER']
       volumes:
         - "/var/run/docker.sock:/var/run/docker.sock:rw"
@@ -32,7 +32,7 @@ exercises:
     1:
       name: docker_escape
       description: "Escape Docker container through excessive capabilities"
-      address: 10.192.0.10/32
+      address: 10.224.0.10/32
       cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER', 'SYS_ADMIN', 'SYS_MODULE'] 
       environment:
         - "DIFFICULTY=medium"
