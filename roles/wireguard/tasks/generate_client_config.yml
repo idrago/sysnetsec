@@ -49,8 +49,8 @@
           vm_type_config.name | default('vm' + vm_type_id | string): {
             'subnet': ctf_environment.wireguard.student_visible_network,
             'vm_ip': ctf_environment.networking.base_subnet + '.' + 
-                   (ctf_environment.networking.start_subnet - (vm_type_id - 1)) | string + '.' + 
-                   student_id | string
+                  ((ctf_environment.networking.start_subnet | int) - ((vm_type_id | int) - 1)) | string + '.' + 
+                  (student_id | int | string)
           }
         }) }}"
       when: student_vm_types | length == 1 and vm_type_id is defined and vm_type_config is defined

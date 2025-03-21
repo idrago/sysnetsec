@@ -306,7 +306,7 @@ def deploy_to_vm(config, vm_config, config_dir, category_name, force=False):
                 os.unlink(temp_flag_path)
                 
                 subprocess.run(
-                    ['lxc', 'exec', vm_name, '--', 'sudo', 'chmod', '400', flag_path],
+                    ['lxc', 'exec', vm_name, '--', 'sudo', 'chmod', '444', flag_path],
                     check=True
                 )
                 subprocess.run(
@@ -375,7 +375,7 @@ def deploy_to_vm(config, vm_config, config_dir, category_name, force=False):
         # Start the containers
         print(f"Starting Docker containers in {category_path}...")
         subprocess.run(
-            ['lxc', 'exec', vm_name, '--', 'sh', '-c', f"cd {category_path} && docker-compose up -d"],
+            ['lxc', 'exec', vm_name, '--', 'sh', '-c', f"cd {category_path} && docker-compose up -d --build"],
             check=True
         )
         

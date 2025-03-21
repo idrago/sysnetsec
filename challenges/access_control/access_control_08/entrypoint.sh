@@ -29,5 +29,9 @@ host    all             all             127.0.0.1/32         trust\" > /var/lib/
     su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/15/main stop"
 fi
 
+# VULN give permission to the postgres user to access /root folder
+setfacl -m u:postgres:rx /root
+chmod 444 /root/flag.txt
+
 echo "Starting PostgreSQL..."
 exec su postgres -c "/usr/lib/postgresql/15/bin/postgres -D /var/lib/postgresql/15/main"

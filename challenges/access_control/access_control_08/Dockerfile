@@ -25,9 +25,6 @@ RUN mkdir -p /var/lib/postgresql/15/main && \
 COPY entrypoint.sh /
 RUN chmod 700 /entrypoint.sh
 
-# VULN give permission to the postgres user to access /root folder
-RUN setfacl -m u:postgres:rx /root
-
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd && pgrep postgres || exit 1
 

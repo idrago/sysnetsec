@@ -96,7 +96,8 @@ ctf_environment:
   student_groups:
     # Default group (if no specific group is assigned)
     - name: "default"
-      vm_types: [1, 2, 3]
+      # vm_types: [1, 2, 3]
+      vm_types: [1]
     
     # # Advanced group with more VMs
     # - name: "advanced"
