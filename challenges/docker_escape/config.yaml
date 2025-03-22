@@ -22,7 +22,7 @@ exercises:
       name: docker_escape
       description: "Escape Docker container through dangerous volume mounts"
       address: 10.192.0.10/32
-      cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER']
+      cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'FOWNER']
       volumes:
         - "/var/run/docker.sock:/var/run/docker.sock:rw"
       environment:
@@ -33,7 +33,7 @@ exercises:
       name: docker_escape
       description: "Escape Docker container through excessive capabilities"
       address: 10.224.0.10/32
-      cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER', 'SYS_ADMIN', 'SYS_MODULE'] 
+      cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'FOWNER', 'SYS_ADMIN', 'SYS_MODULE'] 
       environment:
         - "DIFFICULTY=medium"
       deploy_flags: False
@@ -45,7 +45,6 @@ vms:
     # VM for dangerous mount exercise
     lab01:
       range: [2, 2]
-      ip_network: 192.168.253.0/24
       vm_suffix: "vm2"
       exercises: [0]
       host_flag: true
@@ -54,7 +53,6 @@ vms:
     # VM for excessive capabilities exercise
     lab02:
       range: [2, 2]
-      ip_network: 192.168.252.0/24
       vm_suffix: "vm3"
       exercises: [1]
       host_flag: true

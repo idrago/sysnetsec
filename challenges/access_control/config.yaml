@@ -12,7 +12,7 @@ service_defaults:
     timeout: 10s
     retries: 3
   cap_drop: ['ALL']
-  cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'CAP_FOWNER']
+  cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'FOWNER']
 
 exercises:
   base_path: /root
