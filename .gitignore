@@ -1,2 +1,4 @@
 .vagrant
 .vpnconfig
+__pycache__
+*.pyc
