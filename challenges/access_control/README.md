@@ -94,7 +94,6 @@ Each exercise runs in its own Docker container, accessible via SSH with credenti
 
 2. Each exercise container includes:
    - A flag file in /root/flag
-   - Hint files in /home/student/hints
    - Exercise-specific configurations and tools
 
 3. Successfully complete an exercise by:

@@ -50,6 +50,7 @@ ctf_environment:
         - net-tools
         - tcpdump
         - bridge-utils
+        - cloud-guest-utils
       subnet_range: "10.128.0.0/10"
     
     # VM Type 2
@@ -70,6 +71,7 @@ ctf_environment:
         - net-tools
         - tcpdump
         - bridge-utils
+        - cloud-guest-utils
       subnet_range: "10.192.0.0/11"
     
     # VM Type 3
@@ -90,14 +92,14 @@ ctf_environment:
         - net-tools
         - tcpdump
         - bridge-utils
+        - cloud-guest-utils
       subnet_range: "10.224.0.0/11"
     
   # Custom VM assignments per student group
   student_groups:
     # Default group (if no specific group is assigned)
     - name: "default"
-      #vm_types: [1, 2, 3]
-      vm_types: [1]
+      vm_types: [1, 2, 3]
     
     # # Advanced group with more VMs
     # - name: "advanced"

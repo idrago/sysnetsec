@@ -173,17 +173,6 @@ class DockerComposeGenerator:
                 flag_volume = f"{base_path}/{category}/{service_name}/flag/flag.txt:{flag_path}:ro"
                 services[full_flag_service]['volumes'].append(flag_volume)
         
-        # Add hints volume to all services with actual path values
-        for svc_name, svc_config in services.items():
-            if 'volumes' not in svc_config:
-                svc_config['volumes'] = []
-            
-            # check if hints path exists
-            hints_path = f"{base_path}/{category}/{service_name}/hints"
-            if os.path.exists(hints_path):
-                hints_volume = f"{hints_path}:/home/student/hints:ro"
-                svc_config['volumes'].append(hints_volume)
-        
         return services
     
     def _process_single_service(self, ex, service_name, template_vars):
@@ -229,15 +218,9 @@ class DockerComposeGenerator:
         else:
             service['networks'] = {self.network_name: {}}
         
-        # Volumes for flag and hints
+        # Volumes for flag
         base_path = template_vars['BASE_PATH']
         category = template_vars['CATEGORY']
-        
-        hint_path = f"{base_path}/{category}/{service_name}/hints"
-        service['volumes'] = []
-        # Check if hints path exists
-        if os.path.exists(hint_path):
-            service['volumes'] = [f"{hint_path}:/home/student/hints:ro"]
         
         # Add flag volume if deploying flags
         if ex.get('deploy_flags', True):

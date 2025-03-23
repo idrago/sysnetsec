@@ -64,8 +64,6 @@ exercises:
       name: access_control_07
       description: "Nginx configuration exploitation"
       cap_add: ['CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'NET_BIND_SERVICE', 'CAP_FOWNER']
-      ports:
-        - "80:80"
       address: 10.128.0.17/32
       build: "./access_control_07"
     

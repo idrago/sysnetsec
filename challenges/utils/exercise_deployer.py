@@ -52,10 +52,7 @@ class ExerciseDeployer:
             
             # Create exercise path on VM
             exercise_path = f"{category_path}/{service_name}"
-            
-            # Create hints directory
-            # self._execute_vm_command(vm_name, ['mkdir', '-p', f"{exercise_path}/hints"])
-            
+                        
             # Create flag directory and deploy flag if needed
             deploy_flags = ex.get('deploy_flags', True)
             if deploy_flags:

@@ -165,6 +165,27 @@
         - agent_check.rc == 0 or vm_config.type != 'vm'
       ignore_errors: yes        
 
+    # Use growpart to expand the partition (assuming sda2 is your root partition)
+    - name: Expand partition using growpart
+      command: >
+        lxc exec {{ instance_name }} -- growpart /dev/sda 2
+
+    # Resize the filesystem
+    - name: Resize the filesystem
+      command: >
+        lxc exec {{ instance_name }} -- resize2fs /dev/sda2
+      register: filesystem_resize
+
+    # Verify disk space
+    - name: Verify disk space
+      command: >
+        lxc exec {{ instance_name }} -- df -h /
+      register: df_output
+      changed_when: false
+      when:
+        - not instance_exists
+        - filesystem_resize.changed      
+
   rescue:
     - name: Log failure
       debug:

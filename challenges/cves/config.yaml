@@ -25,7 +25,7 @@ exercises:
       composite_services: true
       deploy_flags: False   
       template_vars:
-        WEB_PORT: "{{random_port:8000,8000}}"
+        WEB_PORT: "{{random_port:8000,9000}}"
         IP_ADDRESS: "{{random_ip:10.128.0.0/10}}"
         FLAG: "{{generate_flag}}"        
       services:
