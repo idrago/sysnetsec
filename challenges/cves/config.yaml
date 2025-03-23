@@ -48,6 +48,36 @@ exercises:
           networks:
             ctf_network:
               ipv4_address: 10.128.0.20    
+            
+    cve-2021-34429:
+      name: cve-2021-34429
+      description: "Cacti RCE"
+      composite_services: true
+      deploy_flags: False   
+      template_vars:
+        WEB_PORT: 80
+        IP_ADDRESS: "{{random_ip:10.128.0.0/10}}"
+        FLAG: "{{generate_flag}}"        
+      services:
+        cacti:
+          build: 
+            context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/cacti"
+          environment:
+            - HTTP_PORT=${WEB_PORT}
+            - FLAG=${FLAG}
+          depends_on:
+            - cve-2021-34429_mysql
+          networks:
+            ctf_network:
+              ipv4_address: ${IP_ADDRESS}
+        mysql:
+          build: 
+            context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/mysql"
+          environment:
+            - WEBSERVER=${IP_ADDRESS}
+          networks:
+            ctf_network:
+              ipv4_address: 10.128.0.21                  
       
 vms:
   student_prefix: "student"
