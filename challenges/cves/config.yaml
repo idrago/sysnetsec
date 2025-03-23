@@ -23,20 +23,18 @@ exercises:
       name: cve-2018-12613
       description: "phpMyAdmin vulnerability"
       composite_services: true
-      deploy_flags: False
-      template_files:
-        - "Dockerfile"      
+      deploy_flags: False   
       template_vars:
-        WEB_PORT: "{{random_port:8000,9000}}"
+        WEB_PORT: "{{random_port:8000,8000}}"
         IP_ADDRESS: "{{random_ip:10.128.0.0/10}}"
+        FLAG: "{{generate_flag}}"        
       services:
         web:
           build: 
             context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/web"
           environment:
             - HTTP_PORT=${WEB_PORT}
-          volumes:
-            - "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/config.inc.php:/var/www/html/phpmyadmin/config.inc.php"
+            - FLAG=${FLAG}
           depends_on:
             - cve-2018-12613_mysql
           networks:
@@ -45,6 +43,11 @@ exercises:
         mysql:
           build: 
             context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/mysql"
+          environment:
+            - WEBSERVER=${IP_ADDRESS}
+          networks:
+            ctf_network:
+              ipv4_address: 10.128.0.20    
       
 vms:
   student_prefix: "student"

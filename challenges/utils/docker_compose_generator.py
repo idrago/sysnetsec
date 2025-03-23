@@ -1,4 +1,5 @@
 from .template_processor import TemplateProcessor
+import os
 
 class DockerComposeGenerator:
     """
@@ -177,8 +178,11 @@ class DockerComposeGenerator:
             if 'volumes' not in svc_config:
                 svc_config['volumes'] = []
             
-            hints_volume = f"{base_path}/{category}/{service_name}/hints:/home/student/hints:ro"
-            svc_config['volumes'].append(hints_volume)
+            # check if hints path exists
+            hints_path = f"{base_path}/{category}/{service_name}/hints"
+            if os.path.exists(hints_path):
+                hints_volume = f"{hints_path}:/home/student/hints:ro"
+                svc_config['volumes'].append(hints_volume)
         
         return services
     
@@ -229,9 +233,11 @@ class DockerComposeGenerator:
         base_path = template_vars['BASE_PATH']
         category = template_vars['CATEGORY']
         
-        # Replace variables directly rather than leaving them for Docker Compose
-        hints_volume = f"{base_path}/{category}/{service_name}/hints:/home/student/hints:ro"
-        service['volumes'] = [hints_volume]
+        hint_path = f"{base_path}/{category}/{service_name}/hints"
+        service['volumes'] = []
+        # Check if hints path exists
+        if os.path.exists(hint_path):
+            service['volumes'] = [f"{hint_path}:/home/student/hints:ro"]
         
         # Add flag volume if deploying flags
         if ex.get('deploy_flags', True):
