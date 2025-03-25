@@ -1,27 +1,23 @@
-FROM debian:bookworm-slim
+FROM alpine:latest
 USER root
 
-# Update and install required packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apk --no-cache add \
         openssh-server \
-        openssh-client \
+        openssh \
         net-tools \
         vim \
-        sudo \
-        procps && \
-    # Clean up apt cache to reduce image size
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
+        sudo && \
     # Create required SSH directory
     mkdir -p /run/sshd && \
-    # Setup SSH (not needed in Debian as keys are auto-generated on first start)
+    # Setup SSH
+    ssh-keygen -A && \
     # Create user with weak password
-    useradd -m -s /bin/bash student && \
+    adduser -D -s /bin/ash student && \
     echo "student:password" | chpasswd && \
     # Give unrestricted sudo access without password
     echo "student ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-# Copy SSH config
+# Copy SSH config (same as in original)
 COPY sshd_config /etc/ssh/sshd_config
 
 # Add healthcheck
