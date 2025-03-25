@@ -200,6 +200,9 @@ class DockerComposeGenerator:
         # Basic service settings
         service['container_name'] = service_name
         service['hostname'] = service_name
+
+        if 'volumes' not in service:
+            service['volumes'] = []        
         
         # Set build context
         if 'build' in ex:
