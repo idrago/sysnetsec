@@ -1,0 +1,60 @@
+network:
+  name: ctf_network
+  subnet: 10.128.0.0/9
+
+# Default service configuration for all docker containers
+service_defaults:
+  init: true
+  tty: true
+  restart: unless-stopped
+  healthcheck:
+    interval: 30s
+    timeout: 10s
+    retries: 3
+  cap_drop: ['ALL']
+  cap_add: ['NET_RAW', 'NET_ADMIN', 'CHOWN', 'SETGID', 'SETUID', 'SYS_CHROOT', 'AUDIT_WRITE', 'SYS_PTRACE', 'LINUX_IMMUTABLE', 'DAC_OVERRIDE', 'FOWNER']
+
+exercises:
+  base_path: /root
+  
+  configs:
+
+    arpspoofing:
+      name: arpspoofing
+      description: "Arp Spoofing Exercise"
+      composite_services: true
+      deploy_flags: False   
+      template_vars:
+        DESTINATION: 10.128.10.11 
+        FLAG: "{{generate_flag}}"        
+      services:
+        generator:
+          build: 
+            context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/generator"
+          environment:
+            - DESTINATION=${DESTINATION}
+            - FLAG=${FLAG}
+          networks:
+            ctf_network:
+              ipv4_address: 10.128.10.12
+        blackhole:
+          build: 
+            context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/blackhole"
+          networks:
+            ctf_network:
+              ipv4_address: 10.128.10.11    
+        jumpbox:
+          build: 
+            context: "${BASE_PATH}/${CATEGORY}/${SERVICE_NAME}/jumpbox"
+          networks:
+            ctf_network:
+              ipv4_address: 10.128.10.10    
+                       
+vms:
+  student_prefix: "student"
+  groups:
+    lab01:
+      range: [2, 2]
+      vm_suffix: "vm1"
+      exercises: [arpspoofing]
+      host_flag: False

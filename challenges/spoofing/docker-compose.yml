@@ -1,0 +1,70 @@
+networks:
+  arpspoofing:
+    driver: macvlan
+    driver_opts:
+      parent: wlp0s20f3
+    ipam:
+      config:
+        - subnet: 192.168.10.0/24
+
+services:
+  arpspoofing_generator:
+    build:
+      context: ./generator
+    environment:
+    - DESTINATION=192.168.10.11
+    - FLAG=flag{WIN}
+    networks:
+      arpspoofing:
+        ipv4_address: 192.168.10.12
+    init: true
+    tty: true
+    restart: unless-stopped
+    healthcheck: &id001
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    cap_drop: &id002
+    - ALL
+    cap_add: &id003
+    - NET_RAW
+    - NET_ADMIN
+    - CHOWN
+    - SETGID
+    - SETUID
+    - SYS_CHROOT
+    - AUDIT_WRITE
+    - SYS_PTRACE
+    - LINUX_IMMUTABLE
+    - DAC_OVERRIDE
+    - FOWNER
+    container_name: arpspoofing_generator
+    mac_address: 00:00:00:00:00:01
+  arpspoofing_blackhole:
+    build:
+      context: ./blackhole
+    networks:
+      arpspoofing:
+        ipv4_address: 192.168.10.11
+    init: true
+    tty: true
+    restart: unless-stopped
+    healthcheck: *id001
+    cap_drop: *id002
+    cap_add: *id003
+    container_name: arpspoofing_blackhole
+    mac_address: 00:00:00:00:00:02
+  arpspoofing_jumpbox:
+    build:
+      context: ./jumpbox
+    networks:
+      arpspoofing:
+        ipv4_address: 192.168.10.10
+    init: true
+    tty: true
+    restart: unless-stopped
+    healthcheck: *id001
+    cap_drop: *id002
+    cap_add: *id003
+    container_name: arpspoofing_jumpbox
+    mac_address: 00:00:00:00:00:03 
