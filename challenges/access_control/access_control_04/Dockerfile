@@ -26,5 +26,7 @@ COPY sshd_config /etc/ssh/sshd_config
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd || exit 1
 
+RUN echo "flag{ac04_suid_find}" > /root/flag.txt && chmod 400 /root/flag.txt
+
 # Set the default command
 CMD ["/usr/sbin/sshd", "-D"]

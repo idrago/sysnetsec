@@ -35,5 +35,7 @@ COPY sshd_config /etc/ssh/sshd_config
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd || exit 1
 
+RUN echo "flag{ac02_ssh_key_pivot}" > /root/flag.txt && chmod 400 /root/flag.txt
+
 # Set the default command
 CMD ["/usr/sbin/sshd", "-D"]

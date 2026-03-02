@@ -9,7 +9,12 @@ RUN apt-get update && \
         net-tools \
         tcpdump \
         vim-tiny \
-        sudo && \
+        sudo \
+        dsniff \
+        arp-scan \
+        arping \
+        iputils-ping \
+        iproute2 && \
     rm -rf /var/lib/apt/lists/* && \
     # Create user with weak password
     useradd -ms /bin/bash student && \

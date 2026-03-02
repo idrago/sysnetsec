@@ -28,4 +28,6 @@ RUN chmod 700 /entrypoint.sh
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd && pgrep postgres || exit 1
 
+RUN echo "flag{ac08_postgres_privesc}" > /root/flag.txt
+
 CMD ["/entrypoint.sh"]

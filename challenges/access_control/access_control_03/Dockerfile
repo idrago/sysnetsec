@@ -35,5 +35,7 @@ RUN chown root:root /etc/cache.sh && \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd || exit 1
 
+RUN echo "flag{ac03_cron_writeable_script}" > /root/flag.txt && chmod 400 /root/flag.txt
+
 # Set the default command
 CMD bash -c "cron && /usr/sbin/sshd -D"

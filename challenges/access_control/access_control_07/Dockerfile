@@ -67,5 +67,7 @@ RUN mkdir -p /var/www/html && \
     chmod -R 755 /var/www/html && \
     echo "Welcome to the server" > /var/www/html/index.html
 
+RUN echo "flag{ac07_nginx_conf_injection}" > /root/flag.txt && chmod 400 /root/flag.txt
+
 # Start all services
 CMD nginx -t && service nginx start && service cron start && /usr/sbin/sshd -D

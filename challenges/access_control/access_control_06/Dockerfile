@@ -40,5 +40,7 @@ RUN echo "* * * * * root /usr/bin/python3 /root/backup.py" >> /etc/cron.d/backup
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep sshd || exit 1
 
+RUN echo "flag{ac06_python_path_hijack}" > /root/flag.txt && chmod 400 /root/flag.txt
+
 # Start both cron and SSH
 CMD bash -c "cron && /usr/sbin/sshd -D"

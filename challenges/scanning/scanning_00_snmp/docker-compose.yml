@@ -1,0 +1,6 @@
+services:
+  scanning_snmp:
+    build: .
+    ports:
+      - "1610:1610/udp"
+    restart: unless-stopped

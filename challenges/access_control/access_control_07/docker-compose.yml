@@ -1,0 +1,6 @@
+services:
+  access_control_07:
+    build: .
+    ports:
+      - "2207:22"
+    restart: unless-stopped

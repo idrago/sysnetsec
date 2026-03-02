@@ -1,0 +1,10 @@
+services:
+  docker_escape_v1:
+    build: .
+    ports:
+      - "2221:22"
+    cap_add:
+      - SYS_ADMIN
+      - SYS_MODULE
+      - NET_ADMIN
+    restart: unless-stopped

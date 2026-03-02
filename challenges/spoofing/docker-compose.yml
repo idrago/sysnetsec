@@ -1,70 +1,80 @@
 networks:
   arpspoofing:
-    driver: macvlan
-    driver_opts:
-      parent: wlp0s20f3
+    driver: bridge
     ipam:
       config:
-        - subnet: 192.168.10.0/24
+        - subnet: 172.30.0.0/24
 
 services:
   arpspoofing_generator:
     build:
-      context: ./generator
+      context: ./arpspoofing/generator
     environment:
-    - DESTINATION=192.168.10.11
-    - FLAG=flag{WIN}
+      - DESTINATION=172.30.0.11
+      - FLAG=flag{arp_spoof_mitm_success}
     networks:
       arpspoofing:
-        ipv4_address: 192.168.10.12
+        ipv4_address: 172.30.0.12
+    mac_address: "00:00:00:00:00:01"
     init: true
     tty: true
     restart: unless-stopped
-    healthcheck: &id001
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    cap_drop: &id002
-    - ALL
-    cap_add: &id003
-    - NET_RAW
-    - NET_ADMIN
-    - CHOWN
-    - SETGID
-    - SETUID
-    - SYS_CHROOT
-    - AUDIT_WRITE
-    - SYS_PTRACE
-    - LINUX_IMMUTABLE
-    - DAC_OVERRIDE
-    - FOWNER
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - CHOWN
+      - SETGID
+      - SETUID
+      - SYS_CHROOT
+      - AUDIT_WRITE
+      - SYS_PTRACE
+      - LINUX_IMMUTABLE
+      - DAC_OVERRIDE
+      - FOWNER
     container_name: arpspoofing_generator
-    mac_address: 00:00:00:00:00:01
+
   arpspoofing_blackhole:
     build:
-      context: ./blackhole
+      context: ./arpspoofing/blackhole
     networks:
       arpspoofing:
-        ipv4_address: 192.168.10.11
+        ipv4_address: 172.30.0.11
+    mac_address: "00:00:00:00:00:02"
     init: true
     tty: true
     restart: unless-stopped
-    healthcheck: *id001
-    cap_drop: *id002
-    cap_add: *id003
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - CHOWN
+      - SETGID
+      - SETUID
+      - SYS_CHROOT
+      - AUDIT_WRITE
+      - SYS_PTRACE
+      - LINUX_IMMUTABLE
+      - DAC_OVERRIDE
+      - FOWNER
     container_name: arpspoofing_blackhole
-    mac_address: 00:00:00:00:00:02
+
   arpspoofing_jumpbox:
     build:
-      context: ./jumpbox
+      context: ./arpspoofing/jumpbox
+    ports:
+      - "2240:22"
     networks:
       arpspoofing:
-        ipv4_address: 192.168.10.10
+        ipv4_address: 172.30.0.10
+    mac_address: "00:00:00:00:00:03"
     init: true
     tty: true
     restart: unless-stopped
-    healthcheck: *id001
-    cap_drop: *id002
-    cap_add: *id003
+    privileged: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
     container_name: arpspoofing_jumpbox
-    mac_address: 00:00:00:00:00:03 

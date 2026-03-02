@@ -1,0 +1,10 @@
+services:
+  docker_escape_v0:
+    build: .
+    ports:
+      - "2220:22"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
